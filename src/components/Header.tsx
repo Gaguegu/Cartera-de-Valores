@@ -1,20 +1,27 @@
 import React from 'react';
-import { Menu, RefreshCw, Smartphone, Github, Sparkles, TrendingUp, Calendar, Bell } from 'lucide-react';
+import { Menu, RefreshCw, TrendingUp, Calendar, Bell, GitCommit } from 'lucide-react';
 import { ActiveTab } from '../types/portfolio';
 
 interface HeaderProps {
   currentTab: ActiveTab;
   onOpenMobileMenu: () => void;
-  onOpenGuide: () => void;
+  onOpenGuide?: () => void;
   onResetData?: () => void;
   totalPortfolioValue: number;
+  currentVersion?: string;
+  onOpenVersionsModal?: () => void;
+  isCheckingVersion?: boolean;
+  hasPendingUpdate?: boolean;
 }
 
 export function Header({
   currentTab,
   onOpenMobileMenu,
-  onOpenGuide,
   totalPortfolioValue,
+  currentVersion,
+  onOpenVersionsModal,
+  isCheckingVersion = false,
+  hasPendingUpdate = false,
 }: HeaderProps) {
   const getTabTitle = (tab: ActiveTab) => {
     switch (tab) {
@@ -76,32 +83,68 @@ export function Header({
         </div>
       </div>
 
-      {/* Right: Date, Action Buttons, GitHub & Mobile Helper */}
+      {/* Right: Óvalo de versiones modificadas, Fecha, Acciones */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* ÓVALO DE VERSIÓN (Estilo de la captura con colores de la aplicación) */}
+        {onOpenVersionsModal && (
+          <button
+            onClick={onOpenVersionsModal}
+            className={`group relative flex flex-col items-center justify-center min-w-[92px] sm:min-w-[108px] px-4 sm:px-5 py-1 sm:py-1.5 rounded-full border-2 transition-all duration-200 cursor-pointer select-none active:scale-95 ${
+              hasPendingUpdate
+                ? 'bg-gradient-to-b from-[#2a1708] via-[#1f130b] to-[#0f0a05] border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)]'
+                : 'bg-gradient-to-b from-[#0f2343] via-[#0b1a32] to-[#071222] border-blue-500/80 hover:border-cyan-400 shadow-[0_0_14px_rgba(59,130,246,0.25)] hover:shadow-[0_0_20px_rgba(6,182,212,0.45)]'
+            }`}
+            title="Versión 2.9.9 · Ver versiones modificadas en GitHub"
+          >
+            {/* Indicador de actualización pendiente */}
+            {hasPendingUpdate && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 border-2 border-slate-900"></span>
+              </span>
+            )}
+
+            {/* Texto superior: VERSIÓN */}
+            <div className="flex items-center gap-1.5 leading-none">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-cyan-400 group-hover:text-cyan-300 transition-colors">
+                VERSIÓN
+              </span>
+              {!hasPendingUpdate && (
+                <span className="relative flex h-1.5 w-1.5">
+                  {isCheckingVersion ? (
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-400 animate-pulse"></span>
+                  ) : (
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
+                  )}
+                </span>
+              )}
+            </div>
+
+            {/* Texto inferior: 2.9.9 */}
+            <span className="text-xs sm:text-sm font-black text-white tracking-tight leading-none mt-0.5 font-mono">
+              {currentVersion && currentVersion.includes('.')
+                ? currentVersion
+                : (currentVersion && currentVersion !== '0e15465' && currentVersion.length < 10
+                  ? currentVersion
+                  : '2.9.9')}
+            </span>
+          </button>
+        )}
+
         {/* Date badge */}
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/70 border border-slate-800 text-xs text-slate-300">
+        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/70 border border-slate-800 text-xs text-slate-300">
           <Calendar className="w-3.5 h-3.5 text-blue-400" />
           <span>12/08/2026</span>
         </div>
 
-        {/* GitHub & Mobile Guide Button */}
+        {/* Quick notification button that opens versions modal */}
         <button
-          onClick={onOpenGuide}
-          className="relative group px-3 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white text-xs font-bold shadow-md shadow-blue-900/40 transition-all flex items-center gap-1.5 active:scale-95"
+          onClick={onOpenVersionsModal}
+          className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+          title="Notificaciones y actualizaciones"
         >
-          <Github className="w-4 h-4 shrink-0" />
-          <span className="hidden sm:inline">Subir a GitHub & Móvil</span>
-          <span className="sm:hidden">GitHub / App</span>
-          <span className="flex h-2 w-2 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-          </span>
-        </button>
-
-        {/* Quick notification / status */}
-        <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer">
           <Bell className="w-4 h-4" />
-        </div>
+        </button>
       </div>
     </header>
   );

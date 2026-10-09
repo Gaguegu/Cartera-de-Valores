@@ -35,6 +35,9 @@ import { NewOperationModal } from './components/modals/NewOperationModal';
 import { NewDividendModal } from './components/modals/NewDividendModal';
 import { GitHubMobileGuideModal } from './components/modals/GitHubMobileGuideModal';
 import { PrintReportModal } from './components/modals/PrintReportModal';
+import { VersionsModal } from './components/modals/VersionsModal';
+import { UpdateNotificationBanner } from './components/UpdateNotificationBanner';
+import { useAppUpdater } from './hooks/useAppUpdater';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<ActiveTab>('dashboard');
@@ -94,6 +97,24 @@ export default function App() {
     dividends: true,
     closed: true,
   });
+
+  // Versions Modal & Automatic App Updater (GitHub sync)
+  const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
+  const {
+    currentVersion,
+    isChecking: isCheckingUpdates,
+    updateAvailable,
+    countdown,
+    justUpdated,
+    history: versionsHistory,
+    autoUpdate,
+    lastChecked,
+    checkForUpdates,
+    handleInstallNow,
+    handlePauseUpdate,
+    handleToggleAutoUpdate,
+    dismissJustUpdated,
+  } = useAppUpdater();
 
   // Sync to localStorage
   useEffect(() => {
@@ -326,12 +347,27 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a1424] text-slate-100 flex flex-col font-sans">
+      {/* Update Notification Banner / Toast */}
+      <UpdateNotificationBanner
+        updateAvailable={updateAvailable}
+        countdown={countdown}
+        justUpdated={justUpdated}
+        onInstallNow={handleInstallNow}
+        onPauseCountdown={handlePauseUpdate}
+        onDismissJustUpdated={dismissJustUpdated}
+        onOpenVersionsModal={() => setIsVersionsModalOpen(true)}
+      />
+
       {/* Header */}
       <Header
         currentTab={currentTab}
         onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         onOpenGuide={() => setIsGuideOpen(true)}
         totalPortfolioValue={totalPortfolioValue}
+        currentVersion={currentVersion}
+        onOpenVersionsModal={() => setIsVersionsModalOpen(true)}
+        isCheckingVersion={isCheckingUpdates}
+        hasPendingUpdate={Boolean(updateAvailable)}
       />
 
       {/* Main layout container with sidebar and content */}
@@ -343,6 +379,8 @@ export default function App() {
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
           onOpenGuide={() => setIsGuideOpen(true)}
+          currentVersion={currentVersion}
+          onOpenVersionsModal={() => setIsVersionsModalOpen(true)}
         />
 
         {/* Main Content Area */}
@@ -475,6 +513,21 @@ export default function App() {
         closedPositions={closedPositions}
         dividends={dividends}
         options={printOptions}
+      />
+
+      {/* MODAL 6: Modified Versions History & GitHub Sync */}
+      <VersionsModal
+        isOpen={isVersionsModalOpen}
+        onClose={() => setIsVersionsModalOpen(false)}
+        currentVersion={currentVersion}
+        history={versionsHistory}
+        isChecking={isCheckingUpdates}
+        lastChecked={lastChecked}
+        autoUpdate={autoUpdate}
+        updateAvailable={updateAvailable}
+        onCheckForUpdates={() => checkForUpdates(true)}
+        onInstallUpdate={handleInstallNow}
+        onToggleAutoUpdate={handleToggleAutoUpdate}
       />
     </div>
   );

@@ -13,9 +13,8 @@ import {
   X,
   CheckCircle2,
   TrendingUp,
-  Github,
-  Sparkles,
   Star,
+  GitCommit,
 } from 'lucide-react';
 import { ActiveTab } from '../types/portfolio';
 
@@ -24,7 +23,9 @@ interface SidebarProps {
   onSelectTab: (tab: ActiveTab) => void;
   isOpen: boolean;
   onClose: () => void;
-  onOpenGuide: () => void;
+  onOpenGuide?: () => void;
+  currentVersion?: string;
+  onOpenVersionsModal?: () => void;
 }
 
 export function Sidebar({
@@ -32,7 +33,8 @@ export function Sidebar({
   onSelectTab,
   isOpen,
   onClose,
-  onOpenGuide,
+  currentVersion,
+  onOpenVersionsModal,
 }: SidebarProps) {
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Inicio', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -121,20 +123,6 @@ export function Sidebar({
             );
           })}
 
-          {/* Quick guide button in menu */}
-          <div className="pt-2">
-            <button
-              onClick={() => {
-                onOpenGuide();
-                onClose();
-              }}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all"
-            >
-              <Github className="w-4 h-4 text-amber-400" />
-              <span>Subir a GitHub / App</span>
-            </button>
-          </div>
-
           {/* Advantages box (Screen 12 Feature) */}
           <div className="mt-4 p-3.5 rounded-xl bg-slate-900/90 border border-slate-800/80 space-y-2 text-[11px]">
             <span className="font-bold text-slate-200 block text-xs border-b border-slate-800 pb-1.5">
@@ -160,6 +148,31 @@ export function Sidebar({
             <span className="text-[10px] text-blue-300 block font-medium">
               Tu cartera, siempre bajo control
             </span>
+
+            {onOpenVersionsModal && (
+              <button
+                onClick={() => {
+                  onOpenVersionsModal();
+                  onClose();
+                }}
+                className="mt-3 w-full flex flex-col items-center justify-center py-1.5 px-4 rounded-full bg-gradient-to-b from-[#0f2343] via-[#0b1a32] to-[#071222] border-2 border-blue-500/80 hover:border-cyan-400 shadow-[0_0_12px_rgba(59,130,246,0.25)] hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] transition-all cursor-pointer group active:scale-95"
+                title="Versión 2.9.9 · Ver versiones modificadas en GitHub"
+              >
+                <div className="flex items-center gap-1.5 leading-none">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400 group-hover:text-cyan-300">
+                    VERSIÓN
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                </div>
+                <span className="text-xs font-black text-white tracking-tight leading-none mt-0.5 font-mono">
+                  {currentVersion && currentVersion.includes('.')
+                    ? currentVersion
+                    : (currentVersion && currentVersion !== '0e15465' && currentVersion.length < 10
+                      ? currentVersion
+                      : '2.9.9')}
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </aside>

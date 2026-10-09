@@ -31,6 +31,32 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Generate version info
+        run: |
+          mkdir -p public
+          node -e "
+            const fs = require('fs');
+            let version = '2.9.9';
+            try {
+              const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+              if (pkg.version) version = pkg.version;
+            } catch (e) {}
+            const sha = process.env.GITHUB_SHA ? process.env.GITHUB_SHA.substring(0, 7) : '0e15465';
+            const info = {
+              version: version,
+              commitSha: process.env.GITHUB_SHA || sha,
+              buildTime: new Date().toISOString(),
+              message: (process.env.COMMIT_MESSAGE || 'Actualización de la aplicación').split('\n')[0],
+              author: process.env.GITHUB_ACTOR || 'Gaguegu',
+              branch: process.env.GITHUB_REF_NAME || 'principal',
+              repo: 'Gaguegu/Cartera-de-Valores'
+            };
+            fs.writeFileSync('public/version.json', JSON.stringify(info, null, 2));
+            console.log('Version generated:', info);
+          "
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
       - name: Build project
         run: npm run build
 
