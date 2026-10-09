@@ -9,8 +9,8 @@ const KEY_JUST_UPDATED = 'cartera_just_updated_notification';
 const KEY_AUTO_UPDATE_ENABLED = 'cartera_auto_update_enabled';
 const KEY_CACHED_HISTORY = 'cartera_cached_versions_history';
 
-// Current latest deployed commit fallback
-export const INITIAL_FALLBACK_VERSION = '8e54940';
+// Latest commit from GitHub repository
+export const INITIAL_FALLBACK_VERSION = '755adff';
 
 /**
  * Checks if two commits are identical by comparing their short SHAs.
@@ -30,7 +30,7 @@ export function getCurrentVersionSha(): string {
   if (saved && saved.trim().length > 0) {
     return saved.trim().substring(0, 7);
   }
-  // Initialize with initial fallback
+  // Initialize with the current repository version
   localStorage.setItem(KEY_CURRENT_VERSION, INITIAL_FALLBACK_VERSION);
   return INITIAL_FALLBACK_VERSION;
 }
@@ -44,11 +44,11 @@ export function setCurrentVersionSha(sha: string): void {
 }
 
 /**
- * Checks if auto-update preference is enabled (default: false to avoid violent reloads).
+ * Checks if auto-update preference is enabled (default: false to avoid loops).
  */
 export function isAutoUpdateEnabled(): boolean {
   const val = localStorage.getItem(KEY_AUTO_UPDATE_ENABLED);
-  return val === 'true'; // Default is FALSE: no violent surprise reloads
+  return val === 'true';
 }
 
 /**
@@ -80,7 +80,7 @@ export function consumeJustUpdatedNotification(): JustUpdatedNotification | null
 }
 
 /**
- * Sets a notification to be shown after the app reloads.
+ * Sets a notification to be shown after the app updates.
  */
 export function setJustUpdatedNotification(notification: JustUpdatedNotification): void {
   localStorage.setItem(KEY_JUST_UPDATED, JSON.stringify(notification));
@@ -100,7 +100,7 @@ export async function fetchDeployedVersion(): Promise<AppVersionInfo | null> {
       commitSha: shortSha || INITIAL_FALLBACK_VERSION,
       message: data.message || 'Actualización de la aplicación',
       date: data.buildTime || new Date().toISOString(),
-      author: data.author || 'Gaguegu',
+      author: data.author || 'Ansama',
       url: `https://github.com/${GITHUB_REPO}/commit/${data.commitSha || ''}`,
     };
   } catch {
@@ -120,7 +120,8 @@ export async function fetchGitHubCommits(): Promise<AppVersionInfo[]> {
     });
 
     if (!response.ok) {
-      throw new Error(`GitHub API HTTP ${response.status}`);
+      console.warn(`GitHub API returned status ${response.status}, falling back to cache`);
+      return getCachedHistory();
     }
 
     const data = await response.json();
@@ -136,7 +137,7 @@ export async function fetchGitHubCommits(): Promise<AppVersionInfo[]> {
         commitSha: item.sha,
         message: firstLineMsg,
         date: item.commit?.author?.date || new Date().toISOString(),
-        author: item.commit?.author?.name || item.author?.login || 'Gaguegu',
+        author: item.commit?.author?.name || item.author?.login || 'Ansama',
         url: item.html_url || `https://github.com/${GITHUB_REPO}/commit/${item.sha}`,
         isCurrent: isSameCommit(shortSha, currentSha),
       };
@@ -155,7 +156,7 @@ export async function fetchGitHubCommits(): Promise<AppVersionInfo[]> {
 }
 
 /**
- * Retrieves cached versions history.
+ * Retrieves cached versions history or fallback repository list.
  */
 export function getCachedHistory(): AppVersionInfo[] {
   const raw = localStorage.getItem(KEY_CACHED_HISTORY);
@@ -173,74 +174,104 @@ export function getCachedHistory(): AppVersionInfo[] {
     }
   }
 
-  // Fallback initial list if completely offline or first load
+  // Fallback initial list matching GitHub repository commits
   return [
     {
+      version: '755adff',
+      commitSha: '755adff4c9af6a38cf81ac9a3cae4bc22483530a',
+      message: 'feat: implement manual update check functionality',
+      date: '2026-10-09T17:50:53Z',
+      author: 'Ansama',
+      url: `https://github.com/${GITHUB_REPO}/commit/755adff4c9af6a38cf81ac9a3cae4bc22483530a`,
+      isCurrent: isSameCommit(currentSha, '755adff'),
+    },
+    {
       version: '8e54940',
-      commitSha: '8e54940',
+      commitSha: '8e54940213992b3fc1a33f1e7eabd6a2d0c76d98',
       message: 'feat: implement automatic update checker and version tracking',
-      date: '2026-10-09T17:25:00Z',
-      author: 'Gaguegu',
-      url: `https://github.com/${GITHUB_REPO}/commit/8e54940`,
+      date: '2026-10-09T17:33:24Z',
+      author: 'Ansama',
+      url: `https://github.com/${GITHUB_REPO}/commit/8e54940213992b3fc1a33f1e7eabd6a2d0c76d98`,
       isCurrent: isSameCommit(currentSha, '8e54940'),
     },
     {
       version: '0e15465',
-      commitSha: '0e15465',
+      commitSha: '0e154658255c99b2cdbf7a9965b9cc7f7ef9680f',
       message: 'build: upgrade esbuild and update dependency install',
       date: '2026-10-09T16:58:01Z',
-      author: 'Gaguegu',
-      url: `https://github.com/${GITHUB_REPO}/commit/0e15465`,
+      author: 'Ansama',
+      url: `https://github.com/${GITHUB_REPO}/commit/0e154658255c99b2cdbf7a9965b9cc7f7ef9680f`,
       isCurrent: isSameCommit(currentSha, '0e15465'),
     },
     {
       version: 'fb5cec6',
-      commitSha: 'fb5cec6',
+      commitSha: 'fb5cec673bcd417443aa4a0d7e0130b3da5dca79',
       message: 'build: initialize project dependencies',
       date: '2026-10-09T16:53:30Z',
-      author: 'Gaguegu',
-      url: `https://github.com/${GITHUB_REPO}/commit/fb5cec6`,
+      author: 'Ansama',
+      url: `https://github.com/${GITHUB_REPO}/commit/fb5cec673bcd417443aa4a0d7e0130b3da5dca79`,
       isCurrent: isSameCommit(currentSha, 'fb5cec6'),
     },
     {
       version: '054dc0a',
-      commitSha: '054dc0a',
+      commitSha: '054dc0ad387f0f9d38157dae7424eeaeb7fde2cd',
       message: 'ci: update deployment workflow and dependency install',
       date: '2026-10-09T16:08:13Z',
-      author: 'Gaguegu',
-      url: `https://github.com/${GITHUB_REPO}/commit/054dc0a`,
+      author: 'Ansama',
+      url: `https://github.com/${GITHUB_REPO}/commit/054dc0ad387f0f9d38157dae7424eeaeb7fde2cd`,
       isCurrent: isSameCommit(currentSha, '054dc0a'),
+    },
+    {
+      version: 'ad1eee0',
+      commitSha: 'ad1eee0bcda48627a7fcb166869b7b082cc000be',
+      message: 'feat: initial project scaffold',
+      date: '2026-10-09T15:54:07Z',
+      author: 'Ansama',
+      url: `https://github.com/${GITHUB_REPO}/commit/ad1eee0bcda48627a7fcb166869b7b082cc000be`,
+      isCurrent: isSameCommit(currentSha, 'ad1eee0'),
+    },
+    {
+      version: 'a85ac28',
+      commitSha: 'a85ac2838501c94df36769f0a9d2d1be6d7dff7d',
+      message: 'Initial commit',
+      date: '2026-10-09T15:51:27Z',
+      author: 'Ansama',
+      url: `https://github.com/${GITHUB_REPO}/commit/a85ac2838501c94df36769f0a9d2d1be6d7dff7d`,
+      isCurrent: isSameCommit(currentSha, 'a85ac28'),
     },
   ];
 }
 
 /**
- * Triggers the actual update by saving state and performing a clean reload.
+ * Applies an update cleanly in client storage without causing disruptive infinite reloads.
  */
-export function applyAppUpdate(newVersion: AppVersionInfo): void {
+export function applyAppUpdate(newVersion: AppVersionInfo): JustUpdatedNotification {
   const targetSha = (newVersion.commitSha || newVersion.version || INITIAL_FALLBACK_VERSION).substring(0, 7);
   
-  // Save new version and prepare notification for reload
+  // Save new version as installed in local storage
   setCurrentVersionSha(targetSha);
-  setJustUpdatedNotification({
+
+  const notification: JustUpdatedNotification = {
     version: APP_SEMANTIC_VERSION,
     commitSha: targetSha,
     message: newVersion.message || 'Actualización aplicada correctamente',
     date: new Date().toISOString(),
-  });
+  };
 
-  // Try to update Service Worker if available
+  setJustUpdatedNotification(notification);
+
+  // If serviceWorker is registered, request cache refresh safely in background
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(reg => reg.update());
-    }).catch(() => {});
+    try {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.update());
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
   }
 
-  // Force cache-busting reload
-  const currentUrl = new URL(window.location.href);
-  currentUrl.searchParams.set('_v', targetSha);
-  currentUrl.searchParams.set('_t', Date.now().toString());
-  window.location.href = currentUrl.toString();
+  return notification;
 }
 
 /**
@@ -259,24 +290,24 @@ export function playUpdateChime(): void {
     const gain1 = ctx.createGain();
     osc1.type = 'sine';
     osc1.frequency.setValueAtTime(587.33, now); // D5
-    gain1.gain.setValueAtTime(0.12, now);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    gain1.gain.setValueAtTime(0.08, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
     osc1.connect(gain1);
     gain1.connect(ctx.destination);
     osc1.start(now);
-    osc1.stop(now + 0.4);
+    osc1.stop(now + 0.3);
 
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.type = 'sine';
     osc2.frequency.setValueAtTime(880, now + 0.12); // A5
-    gain2.gain.setValueAtTime(0.15, now + 0.12);
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    gain2.gain.setValueAtTime(0.12, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
     osc2.connect(gain2);
     gain2.connect(ctx.destination);
     osc2.start(now + 0.12);
-    osc2.stop(now + 0.6);
+    osc2.stop(now + 0.5);
   } catch {
-    // Ignore audio errors if blocked by browser
+    // audio autoplay might be blocked, ignore gracefully
   }
 }

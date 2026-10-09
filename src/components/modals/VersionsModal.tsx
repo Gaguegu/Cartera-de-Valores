@@ -142,7 +142,7 @@ export function VersionsModal({
                 <div className="text-xs text-slate-300">
                   <span className="text-slate-400">Commit activo: </span>
                   <span className="font-mono text-blue-300 bg-blue-950/80 px-2 py-0.5 rounded border border-blue-800/60 font-bold">
-                    {currentCommitSha || (currentVersion !== '2.9.9' ? currentVersion : '8e54940')}
+                    {currentCommitSha || (currentVersion !== '2.9.9' ? currentVersion : '755adff')}
                   </span>
                 </div>
               </div>

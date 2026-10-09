@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, RefreshCw, TrendingUp, Calendar, Bell, GitCommit } from 'lucide-react';
+import { Menu, RefreshCw, TrendingUp, Calendar, Bell, GitCommit, Sparkles, Check } from 'lucide-react';
 import { ActiveTab } from '../types/portfolio';
 
 interface HeaderProps {
@@ -147,15 +147,13 @@ export function Header({
             }`}
             title="Comprobar si están todas las actualizaciones al día con GitHub"
           >
-            <RefreshCw
-              className={`w-3.5 h-3.5 ${
-                isCheckingVersion
-                  ? 'animate-spin text-cyan-400'
-                  : hasPendingUpdate
-                  ? 'text-white animate-spin'
-                  : 'text-cyan-400'
-              }`}
-            />
+            {isCheckingVersion ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+            ) : hasPendingUpdate ? (
+              <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+            )}
             <span className="hidden md:inline">
               {isCheckingVersion
                 ? 'Comprobando...'

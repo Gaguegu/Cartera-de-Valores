@@ -1,9 +1,9 @@
 {
   "version": "2.9.9",
-  "commitSha": "8e54940",
-  "buildTime": "2026-10-09T17:35:00Z",
-  "message": "feat: implement automatic update checker and version tracking",
-  "author": "Gaguegu",
+  "commitSha": "755adff",
+  "buildTime": "2026-10-09T17:50:53Z",
+  "message": "feat: implement manual update check functionality",
+  "author": "Ansama",
   "branch": "principal",
   "repo": "Gaguegu/Cartera-de-Valores"
 }

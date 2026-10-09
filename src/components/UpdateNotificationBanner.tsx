@@ -30,7 +30,7 @@ export function UpdateNotificationBanner({
         <div className="fixed top-4 right-4 sm:right-6 z-50 max-w-md w-[calc(100%-2rem)] bg-gradient-to-r from-emerald-950/95 via-slate-900/95 to-slate-900/95 border border-emerald-500/50 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-in slide-in-from-top-4 duration-300">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <CheckCircle2 className="w-6 h-6 animate-pulse" />
+              <CheckCircle2 className="w-6 h-6" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
@@ -85,7 +85,7 @@ export function UpdateNotificationBanner({
               </div>
             ) : manualFeedback.status === 'update_available' ? (
               <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 flex-shrink-0">
-                <AlertCircle className="w-6 h-6 animate-pulse" />
+                <AlertCircle className="w-6 h-6" />
               </div>
             ) : (
               <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-400/30 flex items-center justify-center text-red-400 flex-shrink-0">

@@ -27,8 +27,9 @@ export function useAppUpdater() {
 
   const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
   const justUpdatedTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasMountedRef = useRef<boolean>(false);
 
-  // Check if we just reloaded from an update completion
+  // Check if we just reloaded or have a pending post-update notice
   useEffect(() => {
     const notice = consumeJustUpdatedNotification();
     if (notice) {
@@ -36,7 +37,6 @@ export function useAppUpdater() {
       setCurrentVersionSha(notice.commitSha || getCurrentVersionSha());
       playUpdateChime();
 
-      // Automatically hide celebration toast after 6 seconds
       justUpdatedTimerRef.current = setTimeout(() => {
         setJustUpdated(null);
       }, 6000);
@@ -51,7 +51,7 @@ export function useAppUpdater() {
 
   /**
    * Check for updates from GitHub API and deployed version.
-   * If isManual is true, provides user-facing feedback toast.
+   * If isManual is true, provides user-facing feedback toast and status.
    */
   const checkForUpdates = useCallback(async (isManual = false) => {
     setIsChecking(true);
@@ -71,7 +71,7 @@ export function useAppUpdater() {
         latestCommit = commits[0];
       }
 
-      // 2. Fetch deployed version.json as backup
+      // 2. Fetch deployed version.json as secondary confirmation
       const deployed = await fetchDeployedVersion();
       if (!latestCommit && deployed) {
         latestCommit = deployed;
@@ -81,48 +81,47 @@ export function useAppUpdater() {
       setLastChecked(now);
 
       if (latestCommit) {
-        const upToDate = isSameCommit(latestCommit.commitSha, activeSha) ||
-                         isSameCommit(latestCommit.version, activeSha);
+        const upToDate =
+          isSameCommit(latestCommit.commitSha, activeSha) ||
+          isSameCommit(latestCommit.version, activeSha);
 
         if (!upToDate) {
-          // New update available!
+          // New update available on GitHub
           setUpdateAvailable(latestCommit);
 
           if (isManual) {
             setManualFeedback({
               status: 'update_available',
-              message: `Nueva versión detectada (${latestCommit.version}): "${latestCommit.message}".`,
+              message: `Nueva modificación detectada: "${latestCommit.message}".`,
               version: latestCommit.version,
               commitSha: latestCommit.commitSha,
               timestamp: now,
             });
           }
         } else {
-          // Everything is up to date!
+          // Completely up to date
           setUpdateAvailable(null);
 
           if (isManual) {
             setManualFeedback({
               status: 'up_to_date',
-              message: `¡Todas las actualizaciones están al día! Tu aplicación tiene la versión más reciente (v${APP_SEMANTIC_VERSION} · ${activeSha}).`,
+              message: `¡Todas las modificaciones están al día! Tu versión activa coincide con el último commit de GitHub (${activeSha.substring(0, 7)}).`,
               version: APP_SEMANTIC_VERSION,
               commitSha: activeSha,
               timestamp: now,
             });
 
-            // Auto-hide the "up to date" notification after 4.5 seconds
             feedbackTimerRef.current = setTimeout(() => {
               setManualFeedback(null);
             }, 4500);
           }
         }
       } else {
-        // Fallback: up to date
         setUpdateAvailable(null);
         if (isManual) {
           setManualFeedback({
             status: 'up_to_date',
-            message: `¡Todas las actualizaciones están al día! Estás en la última versión (v${APP_SEMANTIC_VERSION}).`,
+            message: `¡Todas las actualizaciones están al día! Tienes la última versión (v${APP_SEMANTIC_VERSION}).`,
             version: APP_SEMANTIC_VERSION,
             commitSha: activeSha,
             timestamp: now,
@@ -133,7 +132,7 @@ export function useAppUpdater() {
         }
       }
     } catch (e) {
-      console.error('Error checking for updates:', e);
+      console.warn('Error checking for updates:', e);
       if (isManual) {
         setManualFeedback({
           status: 'error',
@@ -149,16 +148,50 @@ export function useAppUpdater() {
     }
   }, []);
 
-  // Silent initial check on mount only (no spam, no countdown)
+  // Single silent initial check on mount only (guaranteed no loops)
   useEffect(() => {
+    if (hasMountedRef.current) return;
+    hasMountedRef.current = true;
     checkForUpdates(false);
   }, [checkForUpdates]);
 
+  /**
+   * Instantly applies the update in-place without page reload loop,
+   * updates the local storage version, and presents the celebration toast.
+   */
   const handleInstallNow = (versionToInstall?: AppVersionInfo) => {
     const target = versionToInstall || updateAvailable;
-    if (target) {
-      setIsUpdating(true);
-      applyAppUpdate(target);
+    if (!target) return;
+
+    setIsUpdating(true);
+
+    try {
+      const notice = applyAppUpdate(target);
+      const targetSha = (target.commitSha || target.version).substring(0, 7);
+
+      setCurrentVersionSha(targetSha);
+      setUpdateAvailable(null);
+      setManualFeedback(null);
+      setJustUpdated(notice);
+
+      // Refresh history list marking the new target as current
+      setHistory(prev =>
+        prev.map(item => ({
+          ...item,
+          isCurrent: isSameCommit(item.version, targetSha) || isSameCommit(item.commitSha, targetSha),
+        }))
+      );
+
+      playUpdateChime();
+
+      if (justUpdatedTimerRef.current) {
+        clearTimeout(justUpdatedTimerRef.current);
+      }
+      justUpdatedTimerRef.current = setTimeout(() => {
+        setJustUpdated(null);
+      }, 6000);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
