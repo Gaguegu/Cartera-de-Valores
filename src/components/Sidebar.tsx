@@ -163,7 +163,7 @@ export function Sidebar({
                   onClose();
                 }}
                 className="mt-3 w-full flex flex-col items-center justify-center py-1.5 px-4 rounded-full bg-gradient-to-b from-[#0f2343] via-[#0b1a32] to-[#071222] border-2 border-blue-500/80 hover:border-cyan-400 shadow-[0_0_12px_rgba(59,130,246,0.25)] hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] transition-all cursor-pointer group active:scale-95"
-                title="Versión 2.9.9 · Ver versiones modificadas en GitHub"
+                title={`Versión ${currentVersion || 'v1.0.0'} · Ver versiones modificadas en GitHub`}
               >
                 <div className="flex items-center gap-1.5 leading-none">
                   <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400 group-hover:text-cyan-300">
@@ -172,11 +172,7 @@ export function Sidebar({
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                 </div>
                 <span className="text-xs font-black text-white tracking-tight leading-none mt-0.5 font-mono">
-                  {currentVersion && currentVersion.includes('.')
-                    ? currentVersion
-                    : (currentVersion && currentVersion !== '0e15465' && currentVersion.length < 10
-                      ? currentVersion
-                      : '2.9.9')}
+                  {currentVersion || 'v1.0.0'}
                 </span>
               </button>
             )}

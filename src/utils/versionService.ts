@@ -2,15 +2,15 @@ import { AppVersionInfo, JustUpdatedNotification } from '../types/version';
 
 export const GITHUB_REPO = 'Gaguegu/Cartera-de-Valores';
 export const GITHUB_COMMITS_API = `https://api.github.com/repos/${GITHUB_REPO}/commits?per_page=15`;
-export const APP_SEMANTIC_VERSION = '2.9.9';
+export const APP_SEMANTIC_VERSION = 'v1.0.0';
 
 const KEY_CURRENT_VERSION = 'cartera_current_version_sha';
 const KEY_JUST_UPDATED = 'cartera_just_updated_notification';
 const KEY_AUTO_UPDATE_ENABLED = 'cartera_auto_update_enabled';
 const KEY_CACHED_HISTORY = 'cartera_cached_versions_history';
 
-// Latest commit from GitHub repository
-export const INITIAL_FALLBACK_VERSION = '755adff';
+// Latest commit from GitHub repository (Gaguegu/Cartera-de-Valores)
+export const INITIAL_FALLBACK_VERSION = '1a1718d';
 
 /**
  * Checks if two commits are identical by comparing their short SHAs.
@@ -177,6 +177,15 @@ export function getCachedHistory(): AppVersionInfo[] {
   // Fallback initial list matching GitHub repository commits
   return [
     {
+      version: '1a1718d',
+      commitSha: '1a1718d859d8ad7c83bbcbb77d794e6eeeb05d19',
+      message: 'feat: implement manual update check functionality',
+      date: '2026-10-09T18:02:26Z',
+      author: 'Ansama',
+      url: `https://github.com/${GITHUB_REPO}/commit/1a1718d859d8ad7c83bbcbb77d794e6eeeb05d19`,
+      isCurrent: isSameCommit(currentSha, '1a1718d'),
+    },
+    {
       version: '755adff',
       commitSha: '755adff4c9af6a38cf81ac9a3cae4bc22483530a',
       message: 'feat: implement manual update check functionality',
@@ -248,66 +257,44 @@ export function getCachedHistory(): AppVersionInfo[] {
 export function applyAppUpdate(newVersion: AppVersionInfo): JustUpdatedNotification {
   const targetSha = (newVersion.commitSha || newVersion.version || INITIAL_FALLBACK_VERSION).substring(0, 7);
   
-  // Save new version as installed in local storage
+  // Set current version in local storage
   setCurrentVersionSha(targetSha);
 
   const notification: JustUpdatedNotification = {
-    version: APP_SEMANTIC_VERSION,
+    version: newVersion.version || APP_SEMANTIC_VERSION,
     commitSha: targetSha,
-    message: newVersion.message || 'Actualización aplicada correctamente',
+    message: newVersion.message || 'Actualización completada a la última versión',
     date: new Date().toISOString(),
   };
 
+  // Store update banner confirmation
   setJustUpdatedNotification(notification);
-
-  // If serviceWorker is registered, request cache refresh safely in background
-  if ('serviceWorker' in navigator) {
-    try {
-      navigator.serviceWorker.getRegistrations().then(regs => {
-        regs.forEach(reg => reg.update());
-      }).catch(() => {});
-    } catch {
-      // ignore
-    }
-  }
 
   return notification;
 }
 
 /**
- * Subtle sound effect when app update is completed
+ * Sound notification on successful update.
  */
-export function playUpdateChime(): void {
+export function playUpdateChime() {
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    
-    // Nice double chime (bell-like)
-    const now = ctx.currentTime;
-    
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(587.33, now); // D5
-    gain1.gain.setValueAtTime(0.08, now);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.3);
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
 
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(880, now + 0.12); // A5
-    gain2.gain.setValueAtTime(0.12, now + 0.12);
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(now + 0.12);
-    osc2.stop(now + 0.5);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.35);
   } catch {
-    // audio autoplay might be blocked, ignore gracefully
+    // AudioContext might be blocked until user gesture, safely ignore
   }
 }

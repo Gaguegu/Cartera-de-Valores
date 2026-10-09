@@ -1,7 +1,7 @@
 {
-  "version": "2.9.9",
-  "commitSha": "755adff",
-  "buildTime": "2026-10-09T17:50:53Z",
+  "version": "v1.0.0",
+  "commitSha": "1a1718d",
+  "buildTime": "2026-10-09T18:02:26Z",
   "message": "feat: implement manual update check functionality",
   "author": "Ansama",
   "branch": "principal",

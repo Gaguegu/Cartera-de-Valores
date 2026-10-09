@@ -53,7 +53,7 @@ export function UpdateNotificationBanner({
               </p>
               <div className="mt-2.5 flex items-center gap-2">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-emerald-950 border border-emerald-500/40 text-emerald-300">
-                  VERSIÓN {justUpdated.version || '2.9.9'}
+                  VERSIÓN {justUpdated.version || 'v1.0.0'}
                 </span>
                 {justUpdated.commitSha && (
                   <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
