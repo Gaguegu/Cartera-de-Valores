@@ -113,6 +113,7 @@ export default function App() {
     lastChecked,
     checkForUpdates,
     handleInstallNow,
+    handleForceReload,
     handleToggleAutoUpdate,
     dismissJustUpdated,
     dismissManualFeedback,
@@ -356,6 +357,7 @@ export default function App() {
         manualFeedback={manualFeedback}
         isUpdating={isUpdating}
         onInstallNow={handleInstallNow}
+        onForceReload={handleForceReload}
         onDismissJustUpdated={dismissJustUpdated}
         onDismissManualFeedback={dismissManualFeedback}
         onOpenVersionsModal={() => setIsVersionsModalOpen(true)}
@@ -373,6 +375,7 @@ export default function App() {
         hasPendingUpdate={Boolean(updateAvailable)}
         onCheckForUpdates={() => checkForUpdates(true)}
         onInstallNow={() => handleInstallNow()}
+        onForceReload={handleForceReload}
       />
 
       {/* Main layout container with sidebar and content */}

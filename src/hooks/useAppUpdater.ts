@@ -37,6 +37,23 @@ export function useAppUpdater() {
 
   // Check if we just reloaded or have a pending post-update notice
   useEffect(() => {
+    const justReloaded = sessionStorage.getItem('cartera_just_reloaded');
+    if (justReloaded) {
+      sessionStorage.removeItem('cartera_just_reloaded');
+      setJustUpdated({
+        version: APP_SEMANTIC_VERSION,
+        commitSha: getCurrentVersionSha(),
+        message: 'Aplicación recargada con éxito a la última versión disponible.',
+        date: new Date().toISOString(),
+      });
+      playUpdateChime();
+
+      justUpdatedTimerRef.current = setTimeout(() => {
+        setJustUpdated(null);
+      }, 7000);
+      return;
+    }
+
     const notice = consumeJustUpdatedNotification();
     if (notice) {
       setJustUpdated(notice);
@@ -234,43 +251,47 @@ export function useAppUpdater() {
   }, [checkForUpdates]);
 
   /**
-   * Instantly applies the update in-place without page reload loop,
-   * updates the local storage version, and presents the celebration toast.
+   * Instantly applies the update and reloads the application cleanly,
+   * clearing cache storage and showing the success banner upon reload.
    */
-  const handleInstallNow = (versionToInstall?: AppVersionInfo) => {
+  const handleInstallNow = async (versionToInstall?: AppVersionInfo) => {
     const target = versionToInstall || updateAvailable;
-    if (!target) return;
-
     setIsUpdating(true);
 
     try {
-      const notice = applyAppUpdate(target);
-      const targetSha = (target.commitSha || target.version).substring(0, 7);
-
-      setCurrentVersionSha(targetSha);
-      setUpdateAvailable(null);
-      setManualFeedback(null);
-      setJustUpdated(notice);
-
-      // Refresh history list marking the new target as current
-      setHistory(prev =>
-        prev.map(item => ({
-          ...item,
-          isCurrent: isSameCommit(item.version, targetSha) || isSameCommit(item.commitSha, targetSha),
-        }))
-      );
-
-      playUpdateChime();
-
-      if (justUpdatedTimerRef.current) {
-        clearTimeout(justUpdatedTimerRef.current);
+      if (target) {
+        applyAppUpdate(target);
       }
-      justUpdatedTimerRef.current = setTimeout(() => {
-        setJustUpdated(null);
-      }, 7000);
-    } finally {
-      setIsUpdating(false);
+      if ('caches' in window) {
+        const cacheKeys = await window.caches.keys();
+        await Promise.all(cacheKeys.map(k => window.caches.delete(k)));
+      }
+    } catch {
+      // ignore
     }
+
+    sessionStorage.setItem('cartera_just_reloaded', 'true');
+    window.location.reload();
+  };
+
+  /**
+   * Forces a clean cache-busting reload of the app so any code modifications
+   * take effect immediately without requiring the user to manually close and reopen the app.
+   */
+  const handleForceReload = async () => {
+    setIsUpdating(true);
+
+    try {
+      if ('caches' in window) {
+        const cacheKeys = await window.caches.keys();
+        await Promise.all(cacheKeys.map(k => window.caches.delete(k)));
+      }
+    } catch {
+      // ignore
+    }
+
+    sessionStorage.setItem('cartera_just_reloaded', 'true');
+    window.location.reload();
   };
 
   const handleToggleAutoUpdate = (enabled: boolean) => {
@@ -305,6 +326,7 @@ export function useAppUpdater() {
     lastChecked,
     checkForUpdates,
     handleInstallNow,
+    handleForceReload,
     handleToggleAutoUpdate,
     dismissJustUpdated,
     dismissManualFeedback,

@@ -8,6 +8,7 @@ interface UpdateNotificationBannerProps {
   manualFeedback: ManualCheckFeedback | null;
   isUpdating?: boolean;
   onInstallNow: (version?: AppVersionInfo) => void;
+  onForceReload?: () => void;
   onDismissJustUpdated: () => void;
   onDismissManualFeedback: () => void;
   onOpenVersionsModal: () => void;
@@ -19,6 +20,7 @@ export function UpdateNotificationBanner({
   manualFeedback,
   isUpdating = false,
   onInstallNow,
+  onForceReload,
   onDismissJustUpdated,
   onDismissManualFeedback,
   onOpenVersionsModal,
@@ -114,6 +116,29 @@ export function UpdateNotificationBanner({
               <p className="text-xs text-slate-300 mt-1">
                 {manualFeedback.message}
               </p>
+
+              {manualFeedback.status === 'up_to_date' && onForceReload && (
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    onClick={onForceReload}
+                    disabled={isUpdating}
+                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-900/40 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    title="Recargar la aplicación para limpiar la memoria y cargar los últimos cambios sin cerrar la app"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+                    {isUpdating ? 'Recargando...' : 'Recargar aplicación ahora'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      onDismissManualFeedback();
+                      onOpenVersionsModal();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-colors cursor-pointer"
+                  >
+                    Ver detalles
+                  </button>
+                </div>
+              )}
 
               {manualFeedback.status === 'update_available' && updateAvailable && (
                 <div className="mt-3 flex items-center gap-2">

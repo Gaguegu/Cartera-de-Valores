@@ -226,7 +226,7 @@ export function NewOperationModal({
               type="text"
               value={date}
               onChange={e => setDate(e.target.value)}
-              placeholder="Ej. 12/08/2026"
+              placeholder="DD/MM/AAAA"
               required
               className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             />

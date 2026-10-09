@@ -14,6 +14,7 @@ interface HeaderProps {
   hasPendingUpdate?: boolean;
   onCheckForUpdates?: () => void;
   onInstallNow?: () => void;
+  onForceReload?: () => void;
 }
 
 export function Header({
@@ -26,6 +27,7 @@ export function Header({
   hasPendingUpdate = false,
   onCheckForUpdates,
   onInstallNow,
+  onForceReload,
 }: HeaderProps) {
   const todayFormatted = useMemo(() => {
     return new Intl.DateTimeFormat('es-ES', {
@@ -141,34 +143,47 @@ export function Header({
 
         {/* BOTÓN DE ACTUALIZACIÓN MANUAL (Comprobar si están todas las actualizaciones al día) */}
         {onCheckForUpdates && (
-          <button
-            onClick={hasPendingUpdate && onInstallNow ? () => onInstallNow() : onCheckForUpdates}
-            disabled={isCheckingVersion}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-60 ${
-              hasPendingUpdate
-                ? 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white border-amber-400 shadow-md shadow-amber-950/40 ring-2 ring-amber-500/30'
-                : 'bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border-slate-700/80 hover:border-cyan-500/60'
-            }`}
-            title="Comprobar si están todas las actualizaciones al día con GitHub"
-          >
-            {isCheckingVersion ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
-            ) : hasPendingUpdate ? (
-              <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-            ) : (
-              <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={hasPendingUpdate && onInstallNow ? () => onInstallNow() : onCheckForUpdates}
+              disabled={isCheckingVersion}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-60 ${
+                hasPendingUpdate
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white border-amber-400 shadow-md shadow-amber-950/40 ring-2 ring-amber-500/30'
+                  : 'bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border-slate-700/80 hover:border-cyan-500/60'
+              }`}
+              title="Comprobar si están todas las actualizaciones al día con GitHub"
+            >
+              {isCheckingVersion ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+              ) : hasPendingUpdate ? (
+                <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+              )}
+              <span className="hidden md:inline">
+                {isCheckingVersion
+                  ? 'Comprobando...'
+                  : hasPendingUpdate
+                  ? 'Actualizar ahora'
+                  : 'Comprobar actualizaciones'}
+              </span>
+              <span className="md:hidden">
+                {isCheckingVersion ? 'Buscando...' : hasPendingUpdate ? 'Actualizar' : 'Comprobar'}
+              </span>
+            </button>
+
+            {onForceReload && (
+              <button
+                onClick={onForceReload}
+                className="flex items-center justify-center p-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-cyan-300 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer shadow-sm active:scale-90"
+                title="Recargar la aplicación (limpia caché y carga los últimos cambios sin cerrar la app)"
+                aria-label="Recargar aplicación"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
             )}
-            <span className="hidden md:inline">
-              {isCheckingVersion
-                ? 'Comprobando...'
-                : hasPendingUpdate
-                ? 'Actualizar ahora'
-                : 'Comprobar actualizaciones'}
-            </span>
-            <span className="md:hidden">
-              {isCheckingVersion ? 'Buscando...' : hasPendingUpdate ? 'Actualizar' : 'Comprobar'}
-            </span>
-          </button>
+          </div>
         )}
 
         {/* Date badge: Fecha actual dinámica */}
