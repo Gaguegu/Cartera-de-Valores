@@ -8,9 +8,10 @@ const KEY_CURRENT_VERSION = 'cartera_current_version_sha';
 const KEY_JUST_UPDATED = 'cartera_just_updated_notification';
 const KEY_AUTO_UPDATE_ENABLED = 'cartera_auto_update_enabled';
 const KEY_CACHED_HISTORY = 'cartera_cached_versions_history';
+const KEY_GITHUB_ETAG = 'cartera_github_commits_etag';
 
 // Latest commit from GitHub repository (Gaguegu/Cartera-de-Valores)
-export const INITIAL_FALLBACK_VERSION = '1a1718d';
+export const INITIAL_FALLBACK_VERSION = 'ca04a78';
 
 /**
  * Checks if two commits are identical by comparing their short SHAs.
@@ -44,10 +45,12 @@ export function setCurrentVersionSha(sha: string): void {
 }
 
 /**
- * Checks if auto-update preference is enabled (default: false to avoid loops).
+ * Checks if auto-update preference is enabled (default: true for hands-free updates).
  */
 export function isAutoUpdateEnabled(): boolean {
   const val = localStorage.getItem(KEY_AUTO_UPDATE_ENABLED);
+  // Default to true so automatic updates run seamlessly in the background
+  if (val === null) return true;
   return val === 'true';
 }
 
@@ -109,19 +112,33 @@ export async function fetchDeployedVersion(): Promise<AppVersionInfo | null> {
 }
 
 /**
- * Fetches recent commit history directly from GitHub API.
+ * Fetches recent commit history directly from GitHub API with ETag caching.
  */
 export async function fetchGitHubCommits(): Promise<AppVersionInfo[]> {
   try {
-    const response = await fetch(GITHUB_COMMITS_API, {
-      headers: {
-        Accept: 'application/vnd.github.v3+json',
-      },
-    });
+    const cachedEtag = localStorage.getItem(KEY_GITHUB_ETAG);
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+    };
+    if (cachedEtag) {
+      headers['If-None-Match'] = cachedEtag;
+    }
+
+    const response = await fetch(GITHUB_COMMITS_API, { headers });
+
+    // 304 Not Modified means current cached history is completely up to date
+    if (response.status === 304) {
+      return getCachedHistory();
+    }
 
     if (!response.ok) {
       console.warn(`GitHub API returned status ${response.status}, falling back to cache`);
       return getCachedHistory();
+    }
+
+    const newEtag = response.headers.get('etag');
+    if (newEtag) {
+      localStorage.setItem(KEY_GITHUB_ETAG, newEtag);
     }
 
     const data = await response.json();
@@ -176,6 +193,15 @@ export function getCachedHistory(): AppVersionInfo[] {
 
   // Fallback initial list matching GitHub repository commits
   return [
+    {
+      version: 'ca04a78',
+      commitSha: 'ca04a78b62e2c0cdec349e96cca5b680229b2b2d',
+      message: 'chore: bump application version to v1.0.0',
+      date: '2026-10-09T18:08:24Z',
+      author: 'Ansama',
+      url: `https://github.com/${GITHUB_REPO}/commit/ca04a78b62e2c0cdec349e96cca5b680229b2b2d`,
+      isCurrent: isSameCommit(currentSha, 'ca04a78'),
+    },
     {
       version: '1a1718d',
       commitSha: '1a1718d859d8ad7c83bbcbb77d794e6eeeb05d19',

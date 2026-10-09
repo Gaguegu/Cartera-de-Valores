@@ -27,7 +27,13 @@ export function useAppUpdater() {
 
   const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
   const justUpdatedTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const hasMountedRef = useRef<boolean>(false);
+  const isCheckingRef = useRef<boolean>(false);
+  const autoUpdateRef = useRef<boolean>(autoUpdate);
+
+  // Keep autoUpdateRef synchronized with state
+  useEffect(() => {
+    autoUpdateRef.current = autoUpdate;
+  }, [autoUpdate]);
 
   // Check if we just reloaded or have a pending post-update notice
   useEffect(() => {
@@ -39,7 +45,7 @@ export function useAppUpdater() {
 
       justUpdatedTimerRef.current = setTimeout(() => {
         setJustUpdated(null);
-      }, 6000);
+      }, 7000);
     }
 
     return () => {
@@ -51,10 +57,15 @@ export function useAppUpdater() {
 
   /**
    * Check for updates from GitHub API and deployed version.
+   * If autoUpdate is enabled, automatically installs and applies the update in-place,
+   * notifying the user once updated without requiring closing/reopening the app.
    * If isManual is true, provides user-facing feedback toast and status.
    */
   const checkForUpdates = useCallback(async (isManual = false) => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
     setIsChecking(true);
+
     if (feedbackTimerRef.current) {
       clearTimeout(feedbackTimerRef.current);
       feedbackTimerRef.current = null;
@@ -86,17 +97,59 @@ export function useAppUpdater() {
           isSameCommit(latestCommit.version, activeSha);
 
         if (!upToDate) {
-          // New update available on GitHub
-          setUpdateAvailable(latestCommit);
+          // New update detected!
+          if (autoUpdateRef.current) {
+            // AUTOMATIC UPDATE: Apply update cleanly in-place without restarting
+            const notice = applyAppUpdate(latestCommit);
+            const targetSha = (latestCommit.commitSha || latestCommit.version).substring(0, 7);
 
-          if (isManual) {
-            setManualFeedback({
-              status: 'update_available',
-              message: `Nueva modificación detectada: "${latestCommit.message}".`,
-              version: latestCommit.version,
-              commitSha: latestCommit.commitSha,
-              timestamp: now,
-            });
+            setCurrentVersionSha(targetSha);
+            setUpdateAvailable(null);
+            setManualFeedback(null);
+            setJustUpdated(notice);
+
+            // Refresh history list marking the new target as current
+            setHistory(prev =>
+              prev.map(item => ({
+                ...item,
+                isCurrent: isSameCommit(item.version, targetSha) || isSameCommit(item.commitSha, targetSha),
+              }))
+            );
+
+            playUpdateChime();
+
+            if (justUpdatedTimerRef.current) {
+              clearTimeout(justUpdatedTimerRef.current);
+            }
+            justUpdatedTimerRef.current = setTimeout(() => {
+              setJustUpdated(null);
+            }, 7000);
+
+            if (isManual) {
+              setManualFeedback({
+                status: 'up_to_date',
+                message: `¡Actualizado a la última versión! Se han sincronizado las modificaciones (${targetSha}): "${latestCommit.message}".`,
+                version: APP_SEMANTIC_VERSION,
+                commitSha: targetSha,
+                timestamp: now,
+              });
+              feedbackTimerRef.current = setTimeout(() => {
+                setManualFeedback(null);
+              }, 4500);
+            }
+          } else {
+            // Manual mode: Notify that update is ready to install
+            setUpdateAvailable(latestCommit);
+
+            if (isManual) {
+              setManualFeedback({
+                status: 'update_available',
+                message: `Nueva modificación detectada: "${latestCommit.message}".`,
+                version: latestCommit.version,
+                commitSha: latestCommit.commitSha,
+                timestamp: now,
+              });
+            }
           }
         } else {
           // Completely up to date
@@ -121,7 +174,7 @@ export function useAppUpdater() {
         if (isManual) {
           setManualFeedback({
             status: 'up_to_date',
-            message: `¡Todas las actualizaciones están al día! Tienes la última versión (v${APP_SEMANTIC_VERSION}).`,
+            message: `¡Todas las actualizaciones están al día! Tienes la última versión (${APP_SEMANTIC_VERSION}).`,
             version: APP_SEMANTIC_VERSION,
             commitSha: activeSha,
             timestamp: now,
@@ -144,15 +197,40 @@ export function useAppUpdater() {
         }, 4500);
       }
     } finally {
+      isCheckingRef.current = false;
       setIsChecking(false);
     }
   }, []);
 
-  // Single silent initial check on mount only (guaranteed no loops)
+  // 1. Initial check on mount
   useEffect(() => {
-    if (hasMountedRef.current) return;
-    hasMountedRef.current = true;
     checkForUpdates(false);
+  }, [checkForUpdates]);
+
+  // 2. Periodic background check every 45s (auto-updates live while application is open)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkForUpdates(false);
+    }, 45000);
+
+    return () => clearInterval(interval);
+  }, [checkForUpdates]);
+
+  // 3. Check immediately when window gains focus or tab becomes visible
+  useEffect(() => {
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdates(false);
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
   }, [checkForUpdates]);
 
   /**
@@ -189,7 +267,7 @@ export function useAppUpdater() {
       }
       justUpdatedTimerRef.current = setTimeout(() => {
         setJustUpdated(null);
-      }, 6000);
+      }, 7000);
     } finally {
       setIsUpdating(false);
     }
