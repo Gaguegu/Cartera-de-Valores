@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Star,
   GitCommit,
+  RefreshCw,
 } from 'lucide-react';
 import { ActiveTab } from '../types/portfolio';
 
@@ -26,6 +27,9 @@ interface SidebarProps {
   onOpenGuide?: () => void;
   currentVersion?: string;
   onOpenVersionsModal?: () => void;
+  onCheckForUpdates?: () => void;
+  isCheckingVersion?: boolean;
+  hasPendingUpdate?: boolean;
 }
 
 export function Sidebar({
@@ -35,6 +39,9 @@ export function Sidebar({
   onClose,
   currentVersion,
   onOpenVersionsModal,
+  onCheckForUpdates,
+  isCheckingVersion = false,
+  hasPendingUpdate = false,
 }: SidebarProps) {
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Inicio', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -171,6 +178,21 @@ export function Sidebar({
                       ? currentVersion
                       : '2.9.9')}
                 </span>
+              </button>
+            )}
+
+            {onCheckForUpdates && (
+              <button
+                onClick={() => {
+                  onCheckForUpdates();
+                  onClose();
+                }}
+                disabled={isCheckingVersion}
+                className="mt-2 w-full flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-[11px] font-semibold text-slate-300 hover:text-white border border-slate-700/70 transition-colors cursor-pointer"
+                title="Comprobar si están todas las actualizaciones al día con GitHub"
+              >
+                <RefreshCw className={`w-3 h-3 ${isCheckingVersion ? 'animate-spin text-cyan-400' : 'text-blue-400'}`} />
+                <span>{isCheckingVersion ? 'Comprobando...' : 'Comprobar al día'}</span>
               </button>
             )}
           </div>

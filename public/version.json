@@ -1,8 +1,8 @@
 {
   "version": "2.9.9",
-  "commitSha": "0e15465",
-  "buildTime": "2026-10-09T16:58:01Z",
-  "message": "build: upgrade esbuild and update dependency install",
+  "commitSha": "8e54940",
+  "buildTime": "2026-10-09T17:35:00Z",
+  "message": "feat: implement automatic update checker and version tracking",
   "author": "Gaguegu",
   "branch": "principal",
   "repo": "Gaguegu/Cartera-de-Valores"

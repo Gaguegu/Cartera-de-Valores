@@ -102,18 +102,20 @@ export default function App() {
   const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
   const {
     currentVersion,
+    currentVersionSha,
     isChecking: isCheckingUpdates,
+    isUpdating,
     updateAvailable,
-    countdown,
     justUpdated,
+    manualFeedback,
     history: versionsHistory,
     autoUpdate,
     lastChecked,
     checkForUpdates,
     handleInstallNow,
-    handlePauseUpdate,
     handleToggleAutoUpdate,
     dismissJustUpdated,
+    dismissManualFeedback,
   } = useAppUpdater();
 
   // Sync to localStorage
@@ -350,11 +352,12 @@ export default function App() {
       {/* Update Notification Banner / Toast */}
       <UpdateNotificationBanner
         updateAvailable={updateAvailable}
-        countdown={countdown}
         justUpdated={justUpdated}
+        manualFeedback={manualFeedback}
+        isUpdating={isUpdating}
         onInstallNow={handleInstallNow}
-        onPauseCountdown={handlePauseUpdate}
         onDismissJustUpdated={dismissJustUpdated}
+        onDismissManualFeedback={dismissManualFeedback}
         onOpenVersionsModal={() => setIsVersionsModalOpen(true)}
       />
 
@@ -368,6 +371,8 @@ export default function App() {
         onOpenVersionsModal={() => setIsVersionsModalOpen(true)}
         isCheckingVersion={isCheckingUpdates}
         hasPendingUpdate={Boolean(updateAvailable)}
+        onCheckForUpdates={() => checkForUpdates(true)}
+        onInstallNow={() => handleInstallNow()}
       />
 
       {/* Main layout container with sidebar and content */}
@@ -381,6 +386,9 @@ export default function App() {
           onOpenGuide={() => setIsGuideOpen(true)}
           currentVersion={currentVersion}
           onOpenVersionsModal={() => setIsVersionsModalOpen(true)}
+          onCheckForUpdates={() => checkForUpdates(true)}
+          isCheckingVersion={isCheckingUpdates}
+          hasPendingUpdate={Boolean(updateAvailable)}
         />
 
         {/* Main Content Area */}
@@ -520,8 +528,10 @@ export default function App() {
         isOpen={isVersionsModalOpen}
         onClose={() => setIsVersionsModalOpen(false)}
         currentVersion={currentVersion}
+        currentCommitSha={currentVersionSha}
         history={versionsHistory}
         isChecking={isCheckingUpdates}
+        isUpdating={isUpdating}
         lastChecked={lastChecked}
         autoUpdate={autoUpdate}
         updateAvailable={updateAvailable}

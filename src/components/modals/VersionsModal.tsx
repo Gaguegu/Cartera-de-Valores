@@ -20,8 +20,10 @@ interface VersionsModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentVersion: string;
+  currentCommitSha?: string;
   history: AppVersionInfo[];
   isChecking: boolean;
+  isUpdating?: boolean;
   lastChecked: Date | null;
   autoUpdate: boolean;
   updateAvailable: AppVersionInfo | null;
@@ -34,8 +36,10 @@ export function VersionsModal({
   isOpen,
   onClose,
   currentVersion,
+  currentCommitSha,
   history,
   isChecking,
+  isUpdating = false,
   lastChecked,
   autoUpdate,
   updateAvailable,
@@ -138,7 +142,7 @@ export function VersionsModal({
                 <div className="text-xs text-slate-300">
                   <span className="text-slate-400">Commit activo: </span>
                   <span className="font-mono text-blue-300 bg-blue-950/80 px-2 py-0.5 rounded border border-blue-800/60 font-bold">
-                    {currentVersion || '0e15465'}
+                    {currentCommitSha || (currentVersion !== '2.9.9' ? currentVersion : '8e54940')}
                   </span>
                 </div>
               </div>
@@ -155,10 +159,11 @@ export function VersionsModal({
               <button
                 onClick={onCheckForUpdates}
                 disabled={isChecking}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors disabled:opacity-50"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors disabled:opacity-50 cursor-pointer"
+                title="Comprueba con GitHub si todas las modificaciones están al día"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin text-blue-400' : ''}`} />
-                {isChecking ? 'Comprobando...' : 'Comprobar ahora'}
+                <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin text-cyan-400' : 'text-blue-400'}`} />
+                {isChecking ? 'Comprobando...' : 'Comprobar si está al día'}
               </button>
 
               <button
@@ -197,10 +202,11 @@ export function VersionsModal({
               </div>
               <button
                 onClick={() => onInstallUpdate(updateAvailable)}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-blue-900/40 flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap"
+                disabled={isUpdating}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-900/40 flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Actualizar ahora
+                <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
+                {isUpdating ? 'Actualizando...' : 'Actualizar a la última versión'}
               </button>
             </div>
           )}

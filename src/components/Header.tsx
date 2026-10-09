@@ -12,6 +12,8 @@ interface HeaderProps {
   onOpenVersionsModal?: () => void;
   isCheckingVersion?: boolean;
   hasPendingUpdate?: boolean;
+  onCheckForUpdates?: () => void;
+  onInstallNow?: () => void;
 }
 
 export function Header({
@@ -22,6 +24,8 @@ export function Header({
   onOpenVersionsModal,
   isCheckingVersion = false,
   hasPendingUpdate = false,
+  onCheckForUpdates,
+  onInstallNow,
 }: HeaderProps) {
   const getTabTitle = (tab: ActiveTab) => {
     switch (tab) {
@@ -127,6 +131,40 @@ export function Header({
                 : (currentVersion && currentVersion !== '0e15465' && currentVersion.length < 10
                   ? currentVersion
                   : '2.9.9')}
+            </span>
+          </button>
+        )}
+
+        {/* BOTÓN DE ACTUALIZACIÓN MANUAL (Comprobar si están todas las actualizaciones al día) */}
+        {onCheckForUpdates && (
+          <button
+            onClick={hasPendingUpdate && onInstallNow ? () => onInstallNow() : onCheckForUpdates}
+            disabled={isCheckingVersion}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-60 ${
+              hasPendingUpdate
+                ? 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white border-amber-400 shadow-md shadow-amber-950/40 ring-2 ring-amber-500/30'
+                : 'bg-slate-900/90 hover:bg-slate-800 text-slate-200 hover:text-white border-slate-700/80 hover:border-cyan-500/60'
+            }`}
+            title="Comprobar si están todas las actualizaciones al día con GitHub"
+          >
+            <RefreshCw
+              className={`w-3.5 h-3.5 ${
+                isCheckingVersion
+                  ? 'animate-spin text-cyan-400'
+                  : hasPendingUpdate
+                  ? 'text-white animate-spin'
+                  : 'text-cyan-400'
+              }`}
+            />
+            <span className="hidden md:inline">
+              {isCheckingVersion
+                ? 'Comprobando...'
+                : hasPendingUpdate
+                ? 'Actualizar ahora'
+                : 'Comprobar actualizaciones'}
+            </span>
+            <span className="md:hidden">
+              {isCheckingVersion ? 'Buscando...' : hasPendingUpdate ? 'Actualizar' : 'Comprobar'}
             </span>
           </button>
         )}

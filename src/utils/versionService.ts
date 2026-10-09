@@ -2,21 +2,34 @@ import { AppVersionInfo, JustUpdatedNotification } from '../types/version';
 
 export const GITHUB_REPO = 'Gaguegu/Cartera-de-Valores';
 export const GITHUB_COMMITS_API = `https://api.github.com/repos/${GITHUB_REPO}/commits?per_page=15`;
+export const APP_SEMANTIC_VERSION = '2.9.9';
 
 const KEY_CURRENT_VERSION = 'cartera_current_version_sha';
 const KEY_JUST_UPDATED = 'cartera_just_updated_notification';
 const KEY_AUTO_UPDATE_ENABLED = 'cartera_auto_update_enabled';
 const KEY_CACHED_HISTORY = 'cartera_cached_versions_history';
 
-// Default initial version if not yet set in storage
-export const INITIAL_FALLBACK_VERSION = '0e15465';
+// Current latest deployed commit fallback
+export const INITIAL_FALLBACK_VERSION = '8e54940';
+
+/**
+ * Checks if two commits are identical by comparing their short SHAs.
+ */
+export function isSameCommit(sha1?: string | null, sha2?: string | null): boolean {
+  if (!sha1 || !sha2) return false;
+  const clean1 = sha1.trim().substring(0, 7).toLowerCase();
+  const clean2 = sha2.trim().substring(0, 7).toLowerCase();
+  return clean1 === clean2;
+}
 
 /**
  * Gets the currently active/installed commit SHA in this client.
  */
 export function getCurrentVersionSha(): string {
   const saved = localStorage.getItem(KEY_CURRENT_VERSION);
-  if (saved) return saved;
+  if (saved && saved.trim().length > 0) {
+    return saved.trim().substring(0, 7);
+  }
   // Initialize with initial fallback
   localStorage.setItem(KEY_CURRENT_VERSION, INITIAL_FALLBACK_VERSION);
   return INITIAL_FALLBACK_VERSION;
@@ -26,15 +39,16 @@ export function getCurrentVersionSha(): string {
  * Sets the currently active/installed version SHA.
  */
 export function setCurrentVersionSha(sha: string): void {
-  localStorage.setItem(KEY_CURRENT_VERSION, sha);
+  const cleanSha = sha.trim().substring(0, 7);
+  localStorage.setItem(KEY_CURRENT_VERSION, cleanSha);
 }
 
 /**
- * Checks if auto-update is enabled (default: true).
+ * Checks if auto-update preference is enabled (default: false to avoid violent reloads).
  */
 export function isAutoUpdateEnabled(): boolean {
   const val = localStorage.getItem(KEY_AUTO_UPDATE_ENABLED);
-  return val === null ? true : val === 'true';
+  return val === 'true'; // Default is FALSE: no violent surprise reloads
 }
 
 /**
@@ -52,7 +66,13 @@ export function consumeJustUpdatedNotification(): JustUpdatedNotification | null
   if (!raw) return null;
   try {
     localStorage.removeItem(KEY_JUST_UPDATED);
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return {
+      version: parsed.version || APP_SEMANTIC_VERSION,
+      commitSha: parsed.commitSha || INITIAL_FALLBACK_VERSION,
+      message: parsed.message || 'Actualización a la última versión',
+      date: parsed.date || new Date().toISOString(),
+    };
   } catch {
     localStorage.removeItem(KEY_JUST_UPDATED);
     return null;
@@ -74,9 +94,10 @@ export async function fetchDeployedVersion(): Promise<AppVersionInfo | null> {
     const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) return null;
     const data = await res.json();
+    const shortSha = (data.commitSha || data.version || '').substring(0, 7);
     return {
-      version: (data.version || data.commitSha || '').substring(0, 7) || 'latest',
-      commitSha: data.commitSha || data.version || '',
+      version: data.version || APP_SEMANTIC_VERSION,
+      commitSha: shortSha || INITIAL_FALLBACK_VERSION,
       message: data.message || 'Actualización de la aplicación',
       date: data.buildTime || new Date().toISOString(),
       author: data.author || 'Gaguegu',
@@ -117,7 +138,7 @@ export async function fetchGitHubCommits(): Promise<AppVersionInfo[]> {
         date: item.commit?.author?.date || new Date().toISOString(),
         author: item.commit?.author?.name || item.author?.login || 'Gaguegu',
         url: item.html_url || `https://github.com/${GITHUB_REPO}/commit/${item.sha}`,
-        isCurrent: shortSha === currentSha || item.sha === currentSha,
+        isCurrent: isSameCommit(shortSha, currentSha),
       };
     });
 
@@ -138,13 +159,14 @@ export async function fetchGitHubCommits(): Promise<AppVersionInfo[]> {
  */
 export function getCachedHistory(): AppVersionInfo[] {
   const raw = localStorage.getItem(KEY_CACHED_HISTORY);
+  const currentSha = getCurrentVersionSha();
+
   if (raw) {
     try {
-      const currentSha = getCurrentVersionSha();
       const parsed: AppVersionInfo[] = JSON.parse(raw);
       return parsed.map(p => ({
         ...p,
-        isCurrent: p.version === currentSha || p.commitSha === currentSha,
+        isCurrent: isSameCommit(p.version, currentSha) || isSameCommit(p.commitSha, currentSha),
       }));
     } catch {
       // ignore
@@ -152,8 +174,16 @@ export function getCachedHistory(): AppVersionInfo[] {
   }
 
   // Fallback initial list if completely offline or first load
-  const currentSha = getCurrentVersionSha();
   return [
+    {
+      version: '8e54940',
+      commitSha: '8e54940',
+      message: 'feat: implement automatic update checker and version tracking',
+      date: '2026-10-09T17:25:00Z',
+      author: 'Gaguegu',
+      url: `https://github.com/${GITHUB_REPO}/commit/8e54940`,
+      isCurrent: isSameCommit(currentSha, '8e54940'),
+    },
     {
       version: '0e15465',
       commitSha: '0e15465',
@@ -161,7 +191,7 @@ export function getCachedHistory(): AppVersionInfo[] {
       date: '2026-10-09T16:58:01Z',
       author: 'Gaguegu',
       url: `https://github.com/${GITHUB_REPO}/commit/0e15465`,
-      isCurrent: currentSha === '0e15465',
+      isCurrent: isSameCommit(currentSha, '0e15465'),
     },
     {
       version: 'fb5cec6',
@@ -170,7 +200,7 @@ export function getCachedHistory(): AppVersionInfo[] {
       date: '2026-10-09T16:53:30Z',
       author: 'Gaguegu',
       url: `https://github.com/${GITHUB_REPO}/commit/fb5cec6`,
-      isCurrent: currentSha === 'fb5cec6',
+      isCurrent: isSameCommit(currentSha, 'fb5cec6'),
     },
     {
       version: '054dc0a',
@@ -179,20 +209,23 @@ export function getCachedHistory(): AppVersionInfo[] {
       date: '2026-10-09T16:08:13Z',
       author: 'Gaguegu',
       url: `https://github.com/${GITHUB_REPO}/commit/054dc0a`,
-      isCurrent: currentSha === '054dc0a',
+      isCurrent: isSameCommit(currentSha, '054dc0a'),
     },
   ];
 }
 
 /**
- * Triggers the actual update by refreshing the page and applying cache busters.
+ * Triggers the actual update by saving state and performing a clean reload.
  */
 export function applyAppUpdate(newVersion: AppVersionInfo): void {
+  const targetSha = (newVersion.commitSha || newVersion.version || INITIAL_FALLBACK_VERSION).substring(0, 7);
+  
   // Save new version and prepare notification for reload
-  setCurrentVersionSha(newVersion.version);
+  setCurrentVersionSha(targetSha);
   setJustUpdatedNotification({
-    version: newVersion.version,
-    message: newVersion.message,
+    version: APP_SEMANTIC_VERSION,
+    commitSha: targetSha,
+    message: newVersion.message || 'Actualización aplicada correctamente',
     date: new Date().toISOString(),
   });
 
@@ -205,7 +238,7 @@ export function applyAppUpdate(newVersion: AppVersionInfo): void {
 
   // Force cache-busting reload
   const currentUrl = new URL(window.location.href);
-  currentUrl.searchParams.set('_v', newVersion.version);
+  currentUrl.searchParams.set('_v', targetSha);
   currentUrl.searchParams.set('_t', Date.now().toString());
   window.location.href = currentUrl.toString();
 }
