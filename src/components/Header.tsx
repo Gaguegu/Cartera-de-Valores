@@ -1,5 +1,5 @@
-import React from 'react';
-import { Menu, RefreshCw, TrendingUp, Calendar, Bell, GitCommit, Sparkles, Check } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Menu, RefreshCw, TrendingUp, Calendar, Sparkles } from 'lucide-react';
 import { ActiveTab } from '../types/portfolio';
 
 interface HeaderProps {
@@ -27,6 +27,14 @@ export function Header({
   onCheckForUpdates,
   onInstallNow,
 }: HeaderProps) {
+  const todayFormatted = useMemo(() => {
+    return new Intl.DateTimeFormat('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(new Date());
+  }, []);
+
   const getTabTitle = (tab: ActiveTab) => {
     switch (tab) {
       case 'dashboard':
@@ -163,20 +171,14 @@ export function Header({
           </button>
         )}
 
-        {/* Date badge */}
-        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/70 border border-slate-800 text-xs text-slate-300">
-          <Calendar className="w-3.5 h-3.5 text-blue-400" />
-          <span>12/08/2026</span>
-        </div>
-
-        {/* Quick notification button that opens versions modal */}
-        <button
-          onClick={onOpenVersionsModal}
-          className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
-          title="Notificaciones y actualizaciones"
+        {/* Date badge: Fecha actual dinámica */}
+        <div 
+          className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900/70 border border-slate-800 text-xs text-slate-300"
+          title={`Fecha actual: ${todayFormatted}`}
         >
-          <Bell className="w-4 h-4" />
-        </button>
+          <Calendar className="w-3.5 h-3.5 text-blue-400" />
+          <span className="font-medium">{todayFormatted}</span>
+        </div>
       </div>
     </header>
   );
