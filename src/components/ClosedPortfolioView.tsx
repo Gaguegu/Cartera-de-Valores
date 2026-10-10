@@ -8,9 +8,16 @@ interface ClosedPortfolioViewProps {
 }
 
 export function ClosedPortfolioView({ closedPositions }: ClosedPortfolioViewProps) {
-  const [selectedYear, setSelectedYear] = useState<number>(2024);
+  const currentYear = new Date().getFullYear();
+  const availableYears = Array.from(
+    new Set([2026, 2025, 2024, 2023, 2022, 2021, 2020, currentYear, ...closedPositions.map(p => p.year)])
+  ).sort((a, b) => b - a);
 
-  const years = [2020, 2021, 2022, 2023, 2024, 2025];
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    return availableYears.includes(2024) ? 2024 : availableYears[0] || 2024;
+  });
+
+  const years = availableYears;
 
   const positionsInYear = closedPositions.filter(p => p.year === selectedYear);
   const totalResultInYear = positionsInYear.reduce((acc, p) => acc + p.resultEUR, 0);
