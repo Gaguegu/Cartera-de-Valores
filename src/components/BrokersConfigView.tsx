@@ -22,6 +22,8 @@ import {
   HelpCircle,
   AlertTriangle,
   Info,
+  Trash2,
+  Check,
 } from 'lucide-react';
 
 interface BrokersConfigViewProps {
@@ -29,6 +31,7 @@ interface BrokersConfigViewProps {
   onAddBroker: (broker: Omit<Broker, 'id'>) => void;
   onToggleBroker: (id: string) => void;
   onResetToDefaults: () => void;
+  onClearAllDataToZero?: () => void;
   onOpenSecurityModal?: (tab?: 'backup' | 'import' | 'password' | 'inspect') => void;
   hasPassword?: boolean;
   onLockApp?: () => void;
@@ -42,6 +45,7 @@ export function BrokersConfigView({
   onAddBroker,
   onToggleBroker,
   onResetToDefaults,
+  onClearAllDataToZero,
   onOpenSecurityModal,
   hasPassword = false,
   onLockApp,
@@ -50,6 +54,8 @@ export function BrokersConfigView({
   securityHint,
 }: BrokersConfigViewProps) {
   const [activeTab, setActiveTab] = useState<'seguridad' | 'copias' | 'brokers' | 'impuestos' | 'divisas' | 'general'>('seguridad');
+  const [showZeroConfirmModal, setShowZeroConfirmModal] = useState(false);
+  const [zeroSuccessMsg, setZeroSuccessMsg] = useState(false);
 
   // Broker creation modal state
   const [isAdding, setIsAdding] = useState(false);
@@ -170,30 +176,101 @@ export function BrokersConfigView({
                   </div>
                   <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
                     {hasPassword
-                      ? 'La aplicación solicita la contraseña obligatoria (máximo 20 dígitos) antes de entrar a la cartera. También dispones del botón superior «Bloqueo manual con un solo clic» para cerrarla inmediatamente cuando desees.'
-                      : 'Cualquier persona puede ver la cartera en este dispositivo. Te recomendamos configurar una contraseña de protección (máximo 20 caracteres/dígitos) para blindar tus datos sensibles y habilitar el Bloqueo manual con un solo clic.'}
+                      ? 'La aplicación solicita la contraseña obligatoria (máximo 20 dígitos) antes de entrar a la cartera. Si deseas bloquearla en cualquier momento, dispones del botón rojo «Bloquear» en la barra superior (accesible desde todas las pantallas).'
+                      : 'Cualquier persona puede ver la cartera en este dispositivo. Te recomendamos configurar una contraseña de protección (máximo 20 caracteres o dígitos) para blindar tus datos sensibles y proteger el acceso.'}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
-                {hasPassword && onLockApp && (
-                  <button
-                    onClick={onLockApp}
-                    className="flex-1 md:flex-none px-4 py-2.5 bg-rose-950/80 hover:bg-rose-900 border border-rose-500/80 hover:border-rose-400 text-rose-200 hover:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-rose-950/40 cursor-pointer active:scale-95"
-                    title="Bloqueo manual con un solo clic: bloquea la aplicación de inmediato"
-                  >
-                    <Lock className="w-4 h-4 text-rose-300" />
-                    <span>Bloqueo manual con 1 clic</span>
-                  </button>
-                )}
-
                 <button
                   onClick={() => onOpenSecurityModal && onOpenSecurityModal('password')}
-                  className="flex-1 md:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-950/40 cursor-pointer"
+                  className="w-full md:w-auto px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-950/40 cursor-pointer active:scale-95"
                 >
-                  <KeyRound className="w-4 h-4" />
-                  <span>{hasPassword ? 'Gestionar / Cambiar contraseña (máx. 20 dígitos)' : 'Crear contraseña (máximo 20 dígitos)'}</span>
+                  <KeyRound className="w-4 h-4 text-amber-300" />
+                  <span>{hasPassword ? '🔑 Cambiar Contraseña (máx. 20 dígitos)' : 'Crear Contraseña (máx. 20 dígitos)'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Guía muy visible: ¿Dónde cambiar de nuevo la contraseña? */}
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-950/70 via-indigo-950/40 to-slate-900 border border-blue-500/40 text-xs space-y-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 text-white font-bold">
+                  <KeyRound className="w-4 h-4 text-amber-400" />
+                  <span>¿Dónde cambiar de nuevo tu contraseña?</span>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-900/80 text-cyan-300 border border-blue-700">
+                  Máximo 20 dígitos
+                </span>
+              </div>
+              <p className="text-slate-300 leading-relaxed text-[11px]">
+                Para cambiar tu contraseña en cualquier momento tienes <strong>2 formas sencillas</strong>:
+              </p>
+              <ul className="text-slate-300 text-[11px] space-y-1 list-disc list-inside">
+                <li>
+                  <strong>Desde esta pantalla:</strong> Pulsa el botón azul <strong>«🔑 Cambiar Contraseña»</strong> justo arriba.
+                </li>
+                <li>
+                  <strong>Desde cualquier pantalla:</strong> Pulsa el botón <strong>«Contraseña»</strong> que se encuentra en la esquina superior derecha del encabezado.
+                </li>
+              </ul>
+              <p className="text-cyan-300 text-[11px] font-medium pt-0.5">
+                Al pulsar, introduce tu contraseña actual y la nueva contraseña de hasta 20 dígitos o caracteres. También dispones de generador automático de 20 dígitos.
+              </p>
+            </div>
+
+            {/* SECCIÓN DESTACADA: Poner Toda la Aplicación a Cero */}
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-rose-950/40 via-red-950/20 to-slate-900 border-2 border-rose-500/50 space-y-3 shadow-lg">
+              <div className="flex items-start justify-between flex-wrap gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/40 shrink-0">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-white flex items-center gap-2">
+                      <span>Poner Toda la Aplicación a Cero</span>
+                      <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-700">
+                        Para introducir tus datos reales
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                      Limpia todas las acciones, compras, ventas, dividendos y valores de seguimiento de prueba. El saldo se reinicia a <strong>0,00 €</strong>.
+                      <strong className="text-white block mt-0.5">
+                        Tu contraseña de acceso y tus brokers se conservarán intactos.
+                      </strong>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {zeroSuccessMsg && (
+                <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/60 text-emerald-200 text-xs flex items-center gap-2 animate-in fade-in">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="font-bold">
+                    ¡Aplicación puesta a cero con éxito! Toda la cartera está en 0,00 € lista para registrar tus inversiones reales.
+                  </span>
+                </div>
+              )}
+
+              <div className="pt-1 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowZeroConfirmModal(true)}
+                  className="px-4 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-rose-950/50 cursor-pointer transition-all active:scale-95"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Poner Toda la Aplicación a Cero</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onResetToDefaults}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-all cursor-pointer"
+                  title="Restaurar de nuevo los datos de demostración si deseas volver a probarlos"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Recargar datos de prueba (Demo)</span>
                 </button>
               </div>
             </div>
@@ -557,22 +634,105 @@ export function BrokersConfigView({
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-800">
-            <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2 text-rose-300">
-              <AlertTriangle className="w-4 h-4 text-rose-400" />
-              <span>Restablecimiento a Valores de Demostración</span>
-            </h3>
-            <p className="text-slate-400 leading-relaxed mb-3">
-              Si deseas reiniciar la aplicación desde cero con los valores y operaciones de ejemplo iniciales, puedes pulsar el siguiente botón. Se recomienda crear una copia de seguridad antes de restablecer.
-            </p>
+          <div className="pt-4 border-t border-slate-800 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2 text-rose-300">
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                <span>Poner Toda la Aplicación a Cero (Limpiar Datos de Prueba)</span>
+              </h3>
+              <p className="text-slate-400 leading-relaxed mb-3">
+                Vacía la cartera completamente para empezar a meter tus datos reales. Se eliminan las acciones, operaciones, dividendos y seguimiento de prueba. El saldo pasa a 0,00 €. Los brokers configurados y la contraseña se mantienen.
+              </p>
 
-            <button
-              onClick={onResetToDefaults}
-              className="px-4 py-2.5 bg-rose-600/20 hover:bg-rose-600 border border-rose-500/30 text-rose-300 hover:text-white rounded-xl font-bold transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>Restablecer datos de fábrica</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setShowZeroConfirmModal(true)}
+                className="px-4 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl font-bold transition-all flex items-center gap-2 cursor-pointer shadow-md shadow-rose-950/40"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Poner Toda la Aplicación a Cero</span>
+              </button>
+            </div>
+
+            <div className="pt-3 border-t border-slate-800/80">
+              <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2 text-slate-300">
+                <RotateCcw className="w-4 h-4 text-cyan-400" />
+                <span>Cargar Datos de Demostración (Demo Inicial)</span>
+              </h3>
+              <p className="text-slate-400 leading-relaxed mb-3">
+                Si alguna vez deseas volver a cargar los datos de ejemplo iniciales para probar funciones, puedes pulsar aquí.
+              </p>
+
+              <button
+                type="button"
+                onClick={onResetToDefaults}
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-xl font-bold transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4 text-cyan-400" />
+                <span>Recargar datos de fábrica (Demo)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMACIÓN: PONER A CERO */}
+      {showZeroConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-lg bg-[#0d1a2d] border-2 border-rose-500/70 rounded-3xl p-6 shadow-2xl space-y-5 text-slate-200">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-rose-600/20 text-rose-400 border border-rose-500/40 flex items-center justify-center shrink-0 shadow-inner">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white tracking-tight">
+                  ¿Poner toda la aplicación a cero?
+                </h3>
+                <p className="text-xs text-rose-300 font-semibold">
+                  Preparación para introducir tus propios datos e inversiones
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2 text-xs leading-relaxed">
+              <p className="text-white font-bold">
+                Esta acción realizará lo siguiente:
+              </p>
+              <ul className="text-slate-300 space-y-1 list-disc list-inside">
+                <li>Eliminará todas las posiciones abiertas y cerradas de prueba.</li>
+                <li>Eliminará el historial de operaciones y dividendos de prueba.</li>
+                <li>Limpiará la lista de seguimiento.</li>
+                <li>Reiniciará el saldo de efectivo en cartera a <strong>0,00 €</strong>.</li>
+              </ul>
+              <div className="mt-2 pt-2 border-t border-slate-800 text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5">
+                <Check className="w-4 h-4 shrink-0" />
+                <span>Tu contraseña de acceso y tus brokers configurados se conservarán.</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowZeroConfirmModal(false)}
+                className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs cursor-pointer border border-slate-700 transition-all text-center"
+              >
+                Cancelar (Mantener datos)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onClearAllDataToZero) {
+                    onClearAllDataToZero();
+                  }
+                  setShowZeroConfirmModal(false);
+                  setZeroSuccessMsg(true);
+                  setTimeout(() => setZeroSuccessMsg(false), 8000);
+                }}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs cursor-pointer shadow-lg shadow-rose-950/60 transition-all text-center active:scale-95"
+              >
+                Sí, poner todo a cero
+              </button>
+            </div>
           </div>
         </div>
       )}

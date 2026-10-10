@@ -343,8 +343,25 @@ export default function App() {
     );
   };
 
+  const handleClearAllDataToZero = () => {
+    setPositions([]);
+    setOperations([]);
+    setClosedPositions([]);
+    setDividends([]);
+    setUpcomingDividends([]);
+    setWatchlist([]);
+    setCashEUR(0);
+    localStorage.setItem('cartera_positions', JSON.stringify([]));
+    localStorage.setItem('cartera_operations', JSON.stringify([]));
+    localStorage.setItem('cartera_closed_positions', JSON.stringify([]));
+    localStorage.setItem('cartera_dividends', JSON.stringify([]));
+    localStorage.setItem('cartera_upcoming_dividends', JSON.stringify([]));
+    localStorage.setItem('cartera_watchlist', JSON.stringify([]));
+    localStorage.setItem('cartera_cash', JSON.stringify(0));
+  };
+
   const handleResetToDefaults = () => {
-    if (window.confirm('¿Deseas restaurar todos los datos iniciales de la Cartera de Valores?')) {
+    if (window.confirm('¿Deseas restaurar todos los datos de ejemplo iniciales de la Cartera de Valores?')) {
       setPositions(INITIAL_POSITIONS);
       setOperations(INITIAL_OPERATIONS);
       setClosedPositions(INITIAL_CLOSED_POSITIONS);
@@ -353,7 +370,14 @@ export default function App() {
       setBrokers(INITIAL_BROKERS);
       setWatchlist(INITIAL_WATCHLIST);
       setCashEUR(INITIAL_CASH_EUR);
-      localStorage.clear();
+      localStorage.setItem('cartera_positions', JSON.stringify(INITIAL_POSITIONS));
+      localStorage.setItem('cartera_operations', JSON.stringify(INITIAL_OPERATIONS));
+      localStorage.setItem('cartera_closed_positions', JSON.stringify(INITIAL_CLOSED_POSITIONS));
+      localStorage.setItem('cartera_dividends', JSON.stringify(INITIAL_DIVIDENDS));
+      localStorage.setItem('cartera_upcoming_dividends', JSON.stringify(INITIAL_UPCOMING_DIVIDENDS));
+      localStorage.setItem('cartera_brokers', JSON.stringify(INITIAL_BROKERS));
+      localStorage.setItem('cartera_watchlist', JSON.stringify(INITIAL_WATCHLIST));
+      localStorage.setItem('cartera_cash', JSON.stringify(INITIAL_CASH_EUR));
     }
   };
 
@@ -491,6 +515,7 @@ export default function App() {
             {currentTab === 'dashboard' && (
               <Dashboard
                 positions={positions}
+                dividends={dividends}
                 onNavigate={setCurrentTab}
                 onOpenNewOperation={() => handleOpenNewOperation()}
                 onSelectStock={stock => setSelectedStock(stock)}
@@ -561,6 +586,7 @@ export default function App() {
                 onAddBroker={handleAddBroker}
                 onToggleBroker={handleToggleBroker}
                 onResetToDefaults={handleResetToDefaults}
+                onClearAllDataToZero={handleClearAllDataToZero}
                 hasPassword={hasPassword}
                 onLockApp={lockApp}
                 autoLockMinutes={autoLockMinutes}

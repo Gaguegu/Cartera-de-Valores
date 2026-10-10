@@ -436,7 +436,11 @@ export function SecurityAndBackupModal({
             { id: 'backup', label: '1. Crear copia cifrada', icon: <Download className="w-4 h-4 text-cyan-400" /> },
             { id: 'import', label: '2. Importar copia', icon: <Upload className="w-4 h-4 text-emerald-400" /> },
             { id: 'inspect', label: '3. Abrir / Examinar copia', icon: <FileKey className="w-4 h-4 text-amber-400" /> },
-            { id: 'password', label: '4. Contraseña de la app', icon: <KeyRound className="w-4 h-4 text-purple-400" /> },
+            {
+              id: 'password',
+              label: hasPassword ? '4. Cambiar Contraseña' : '4. Configurar Contraseña',
+              icon: <KeyRound className="w-4 h-4 text-amber-400" />,
+            },
           ].map(tab => (
             <button
               key={tab.id}
@@ -925,7 +929,8 @@ export function SecurityAndBackupModal({
                 {hasPassword && (
                   <button
                     onClick={onLockApp}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-950/40 cursor-pointer"
+                    className="px-3.5 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-red-950/40 cursor-pointer"
+                    title="Bloquear la aplicación de inmediato"
                   >
                     <Lock className="w-3.5 h-3.5" />
                     <span>Bloquear ahora</span>
