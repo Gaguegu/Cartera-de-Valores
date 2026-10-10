@@ -240,6 +240,16 @@ export function useAppSecurity() {
     [config]
   );
 
+  // Update password hint directly
+  const updateHint = useCallback(
+    (newHint: string) => {
+      const updated = { ...config, hint: newHint.trim(), lastUpdated: new Date().toISOString() };
+      localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(updated));
+      setConfig(updated);
+    },
+    [config]
+  );
+
   return {
     hasPassword: config.hasPassword,
     isLocked,
@@ -252,6 +262,7 @@ export function useAppSecurity() {
     changePassword,
     removePassword,
     updateAutoLock,
+    updateHint,
     setIsLocked,
   };
 }

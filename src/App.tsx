@@ -136,6 +136,7 @@ export default function App() {
     changePassword,
     removePassword,
     updateAutoLock,
+    updateHint,
   } = useAppSecurity();
 
   const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
@@ -592,6 +593,7 @@ export default function App() {
                 autoLockMinutes={autoLockMinutes}
                 onUpdateAutoLock={updateAutoLock}
                 securityHint={securityHint}
+                onUpdateHint={updateHint}
                 onOpenSecurityModal={tab => {
                   setSecurityModalTab(tab || 'backup');
                   setIsSecurityModalOpen(true);

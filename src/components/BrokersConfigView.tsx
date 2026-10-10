@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Broker } from '../types/portfolio';
 import {
   Plus,
@@ -38,6 +38,7 @@ interface BrokersConfigViewProps {
   autoLockMinutes?: number;
   onUpdateAutoLock?: (minutes: number) => void;
   securityHint?: string;
+  onUpdateHint?: (hint: string) => void;
 }
 
 export function BrokersConfigView({
@@ -52,10 +53,28 @@ export function BrokersConfigView({
   autoLockMinutes = 15,
   onUpdateAutoLock,
   securityHint,
+  onUpdateHint,
 }: BrokersConfigViewProps) {
   const [activeTab, setActiveTab] = useState<'seguridad' | 'copias' | 'brokers' | 'impuestos' | 'divisas' | 'general'>('seguridad');
   const [showZeroConfirmModal, setShowZeroConfirmModal] = useState(false);
   const [zeroSuccessMsg, setZeroSuccessMsg] = useState(false);
+
+  // Password Hint state
+  const [hintInput, setHintInput] = useState(securityHint || '');
+  const [hintSavedToast, setHintSavedToast] = useState(false);
+
+  useEffect(() => {
+    setHintInput(securityHint || '');
+  }, [securityHint]);
+
+  const handleSaveHint = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (onUpdateHint) {
+      onUpdateHint(hintInput);
+      setHintSavedToast(true);
+      setTimeout(() => setHintSavedToast(false), 4000);
+    }
+  };
 
   // Broker creation modal state
   const [isAdding, setIsAdding] = useState(false);
@@ -300,24 +319,45 @@ export function BrokersConfigView({
               </div>
 
               <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex items-center gap-2 text-white font-bold">
-                  <HelpCircle className="w-4 h-4 text-blue-400" />
-                  <span>Pista o recordatorio de contraseña</span>
-                </div>
-                <p className="text-slate-400 text-[11px] leading-relaxed">
-                  Pista visible en la pantalla de bloqueo si olvidas tu contraseña.
-                </p>
-                <div className="pt-1">
-                  {securityHint ? (
-                    <div className="px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-cyan-300 font-mono text-xs">
-                      "{securityHint}"
-                    </div>
-                  ) : (
-                    <span className="text-slate-500 text-xs italic">
-                      No has configurado ninguna pista de contraseña todavía.
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-white font-bold">
+                    <HelpCircle className="w-4 h-4 text-cyan-400" />
+                    <span>Pista o recordatorio de contraseña</span>
+                  </div>
+                  {hintSavedToast && (
+                    <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1 animate-in fade-in">
+                      <Check className="w-3.5 h-3.5" /> ¡Pista guardada!
                     </span>
                   )}
                 </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Pista visible en la pantalla de bloqueo si pulsas «¿Olvidaste la clave?».
+                </p>
+                <form onSubmit={handleSaveHint} className="pt-1 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={hintInput}
+                    onChange={e => setHintInput(e.target.value)}
+                    placeholder="Escribe tu pista aquí (ej: nombre de mi perro, fecha boda...)"
+                    className="flex-1 bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-lg px-3 py-2 text-white text-xs placeholder-slate-500 focus:outline-none transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-lg text-xs cursor-pointer shadow-sm transition-all active:scale-95 whitespace-nowrap"
+                  >
+                    Guardar
+                  </button>
+                </form>
+                {securityHint ? (
+                  <p className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-0.5">
+                    <span>Pista activa:</span>
+                    <strong className="text-cyan-300 font-mono">"{securityHint}"</strong>
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-500 italic pt-0.5">
+                    Escribe tu pista arriba y pulsa Guardar para registrarla.
+                  </p>
+                )}
               </div>
             </div>
 
