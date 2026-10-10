@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ShieldCheck,
   DollarSign,
-  Bell,
   Sliders,
   Database,
   RotateCcw,
@@ -17,6 +16,12 @@ import {
   Upload,
   FileKey,
   Shield,
+  Briefcase,
+  FileSpreadsheet,
+  Clock,
+  HelpCircle,
+  AlertTriangle,
+  Info,
 } from 'lucide-react';
 
 interface BrokersConfigViewProps {
@@ -27,6 +32,9 @@ interface BrokersConfigViewProps {
   onOpenSecurityModal?: (tab?: 'backup' | 'import' | 'password' | 'inspect') => void;
   hasPassword?: boolean;
   onLockApp?: () => void;
+  autoLockMinutes?: number;
+  onUpdateAutoLock?: (minutes: number) => void;
+  securityHint?: string;
 }
 
 export function BrokersConfigView({
@@ -37,8 +45,11 @@ export function BrokersConfigView({
   onOpenSecurityModal,
   hasPassword = false,
   onLockApp,
+  autoLockMinutes = 15,
+  onUpdateAutoLock,
+  securityHint,
 }: BrokersConfigViewProps) {
-  const [activeTab, setActiveTab] = useState<'brokers' | 'impuestos' | 'divisas' | 'notificaciones' | 'general' | 'seguridad'>('seguridad');
+  const [activeTab, setActiveTab] = useState<'seguridad' | 'copias' | 'brokers' | 'impuestos' | 'divisas' | 'general'>('seguridad');
 
   // Broker creation modal state
   const [isAdding, setIsAdding] = useState(false);
@@ -68,53 +79,299 @@ export function BrokersConfigView({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Configuration Header & Tabs - Screen 11 */}
-      <div className="bg-[#12233f] border border-slate-700/70 p-4 rounded-2xl shadow-md space-y-4">
-        <div>
-          <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-            Gestión de brokers y configuración
-          </h2>
-          <p className="text-xs text-slate-400">
-            Ajusta tus intermediarios financieros, tipos impositivos y divisas operativas
-          </p>
+      {/* Configuration Header & Navigation */}
+      <div className="bg-[#12233f] border border-slate-700/70 p-5 rounded-2xl shadow-md space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl shadow-inner">
+              <Sliders className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+                <span>Configuración y Seguridad</span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                Contraseña de acceso, copias de seguridad cifradas, intermediarios (brokers), impuestos y divisas
+              </p>
+            </div>
+          </div>
+
+          {/* Badge de seguridad global */}
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${
+                hasPassword
+                  ? 'bg-emerald-950/80 border-emerald-600/50 text-emerald-300'
+                  : 'bg-amber-950/80 border-amber-600/50 text-amber-300'
+              }`}
+            >
+              {hasPassword ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+              <span>{hasPassword ? 'Protegida con contraseña' : 'Sin contraseña (acceso libre)'}</span>
+            </span>
+          </div>
         </div>
 
-        {/* 6 Tabs - Screen 11 */}
-        <div className="flex border-b border-slate-800 gap-2 sm:gap-4 overflow-x-auto text-xs sm:text-sm font-semibold">
+        {/* 6 Tabs */}
+        <div className="flex border-b border-slate-800 gap-1 sm:gap-2 overflow-x-auto text-xs sm:text-sm font-semibold pb-1 scrollbar-none">
           {[
-            { id: 'seguridad', label: 'Seguridad y Copias 🔐' },
-            { id: 'brokers', label: 'Brokers' },
-            { id: 'impuestos', label: 'Impuestos' },
-            { id: 'divisas', label: 'Divisas' },
-            { id: 'notificaciones', label: 'Notificaciones' },
-            { id: 'general', label: 'General' },
+            { id: 'seguridad', label: 'Seguridad y Acceso', icon: <Lock className="w-3.5 h-3.5" /> },
+            { id: 'copias', label: 'Copias de Seguridad', icon: <Database className="w-3.5 h-3.5" /> },
+            { id: 'brokers', label: 'Brokers y Cuentas', icon: <Briefcase className="w-3.5 h-3.5" /> },
+            { id: 'impuestos', label: 'Fiscalidad / IRPF', icon: <FileSpreadsheet className="w-3.5 h-3.5" /> },
+            { id: 'divisas', label: 'Divisas (€/$)', icon: <DollarSign className="w-3.5 h-3.5" /> },
+            { id: 'general', label: 'General / Reset', icon: <Sliders className="w-3.5 h-3.5" /> },
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`py-2.5 px-3 border-b-2 font-bold transition-all whitespace-nowrap cursor-pointer ${
+              className={`py-2 px-3 sm:px-4 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-400 bg-blue-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-950/40'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
               }`}
             >
-              {tab.label}
+              {tab.icon}
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* TAB 1: BROKERS TABLE - Screen 11 */}
+      {/* TAB 1: SEGURIDAD Y ACCESO */}
+      {activeTab === 'seguridad' && (
+        <div className="space-y-6">
+          {/* Main Security Card */}
+          <div className="bg-[#12233f] border border-slate-700/70 rounded-2xl p-6 shadow-xl space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+              <div className="flex items-start sm:items-center gap-4">
+                <div
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shrink-0 ${
+                    hasPassword
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-emerald-950/40'
+                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-amber-950/40'
+                  }`}
+                >
+                  {hasPassword ? <Lock className="w-6 h-6" /> : <Unlock className="w-6 h-6" />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-black text-white">
+                      {hasPassword ? 'Contraseña de la Aplicación Activada' : 'Contraseña de Acceso Desactivada'}
+                    </h3>
+                    <span
+                      className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                        hasPassword
+                          ? 'bg-emerald-950 border border-emerald-700 text-emerald-300'
+                          : 'bg-amber-950 border border-amber-700 text-amber-300'
+                      }`}
+                    >
+                      {hasPassword ? 'Protegido' : 'Acceso Libre'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                    {hasPassword
+                      ? 'La aplicación solicita la contraseña obligatoria antes de entrar a la cartera. También se utiliza como clave para cifrar y descifrar copias de seguridad.'
+                      : 'Cualquier persona puede ver la cartera en este dispositivo. Te recomendamos configurar una contraseña de protección para blindar tus datos sensibles de inversiones.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
+                {hasPassword && onLockApp && (
+                  <button
+                    onClick={onLockApp}
+                    className="flex-1 md:flex-none px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 border border-slate-700 cursor-pointer"
+                    title="Bloquea la aplicación de inmediato"
+                  >
+                    <Lock className="w-4 h-4 text-cyan-400" />
+                    <span>Bloquear ahora</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => onOpenSecurityModal && onOpenSecurityModal('password')}
+                  className="flex-1 md:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-950/40 cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>{hasPassword ? 'Gestionar / Cambiar contraseña' : 'Crear contraseña de acceso'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Inactivity Auto-Lock Setting */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex items-center gap-2 text-white font-bold">
+                  <Clock className="w-4 h-4 text-cyan-400" />
+                  <span>Bloqueo automático por inactividad</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Si dejas la pestaña abierta sin interactuar durante este tiempo, la pantalla se bloqueará automáticamente solicitando de nuevo la contraseña.
+                </p>
+                <div className="pt-1 flex items-center gap-2">
+                  <select
+                    value={autoLockMinutes}
+                    onChange={e => onUpdateAutoLock && onUpdateAutoLock(Number(e.target.value))}
+                    disabled={!hasPassword}
+                    className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                  >
+                    <option value={2}>2 minutos</option>
+                    <option value={5}>5 minutos</option>
+                    <option value={15}>15 minutos (recomendado)</option>
+                    <option value={30}>30 minutos</option>
+                    <option value={60}>1 hora</option>
+                    <option value={0}>Desactivado (nunca bloquear por inactividad)</option>
+                  </select>
+                  {!hasPassword && (
+                    <span className="text-[11px] text-amber-400 italic">
+                      (Requiere tener contraseña activa)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex items-center gap-2 text-white font-bold">
+                  <HelpCircle className="w-4 h-4 text-blue-400" />
+                  <span>Pista o recordatorio de contraseña</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Pista visible en la pantalla de bloqueo si olvidas tu contraseña.
+                </p>
+                <div className="pt-1">
+                  {securityHint ? (
+                    <div className="px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-cyan-300 font-mono text-xs">
+                      "{securityHint}"
+                    </div>
+                  ) : (
+                    <span className="text-slate-500 text-xs italic">
+                      No has configurado ninguna pista de contraseña todavía.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Information note about security */}
+            <div className="p-4 rounded-xl bg-blue-950/20 border border-blue-800/40 text-blue-200 text-xs flex items-start gap-3">
+              <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-bold text-white">Seguridad local de conocimiento cero (Zero-Knowledge)</p>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  Tu contraseña nunca viaja a ningún servidor externo. El hash se calcula directamente en tu navegador usando la API criptográfica nativa PBKDF2 (SHA-256 con 100.000 iteraciones). Si cambias de contraseña, podrás descifrar tus copias anteriores introduciendo la clave con la que fueron creadas.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: COPIAS DE SEGURIDAD CIFRADAS (.cartera) */}
+      {activeTab === 'copias' && (
+        <div className="space-y-6">
+          <div className="bg-[#12233f] border border-slate-700/70 rounded-2xl p-6 shadow-xl space-y-4">
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-white mb-1">
+                Copias de Seguridad Cifradas con Fecha y Hora
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-3xl">
+                Tus datos de inversiones se guardan en un archivo con formato <code>.cartera</code> con la <strong>fecha y hora exacta en el nombre</strong> (ej: <code>copia_cartera_2026-10-10_12-30-00.cartera</code>). El archivo está totalmente cifrado mediante <strong>AES-256-GCM</strong> y <strong>es imposible de abrir o leer sin la contraseña</strong>.
+              </p>
+            </div>
+
+            {/* 3 Main Action Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              {/* Card 1: Descargar Copia */}
+              <div className="bg-slate-900/90 border border-cyan-800/60 rounded-2xl p-5 shadow-lg flex flex-col justify-between space-y-4 hover:border-cyan-500 transition-colors">
+                <div className="space-y-2">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                    <Download className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-bold text-white text-sm">1. Exportar Copia Cifrada</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Descarga tu archivo <code>.cartera</code> protegido con contraseña. Contiene todos tus valores, operaciones, dividendos, brokers y configuraciones.
+                  </p>
+                </div>
+                <button
+                  onClick={() => onOpenSecurityModal && onOpenSecurityModal('backup')}
+                  className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Crear Copia Cifrada</span>
+                </button>
+              </div>
+
+              {/* Card 2: Importar y Restaurar */}
+              <div className="bg-slate-900/90 border border-emerald-800/60 rounded-2xl p-5 shadow-lg flex flex-col justify-between space-y-4 hover:border-emerald-500 transition-colors">
+                <div className="space-y-2">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                    <Upload className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-bold text-white text-sm">2. Importar Copia de Seguridad</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Carga un archivo de respaldo. La aplicación te <strong>pedirá la contraseña</strong> para descifrarlo, validará su integridad y restaurará tu cartera.
+                  </p>
+                </div>
+                <button
+                  onClick={() => onOpenSecurityModal && onOpenSecurityModal('import')}
+                  className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <FileKey className="w-4 h-4" />
+                  <span>Importar (Pedirá Contraseña)</span>
+                </button>
+              </div>
+
+              {/* Card 3: Visor Seguro */}
+              <div className="bg-slate-900/90 border border-amber-800/60 rounded-2xl p-5 shadow-lg flex flex-col justify-between space-y-4 hover:border-amber-500 transition-colors">
+                <div className="space-y-2">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                    <FileKey className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-bold text-white text-sm">3. Examinar Archivo Cifrado</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Introduce la contraseña para inspeccionar y ver el contenido de cualquier copia sin modificar ni alterar tus datos actuales en la aplicación.
+                  </p>
+                </div>
+                <button
+                  onClick={() => onOpenSecurityModal && onOpenSecurityModal('inspect')}
+                  className="w-full py-2.5 px-4 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>Examinar Archivo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: BROKERS TABLE */}
       {activeTab === 'brokers' && (
         <div className="bg-[#12233f] border border-slate-700/70 rounded-2xl shadow-xl overflow-hidden p-5 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-white">Brokers y Cuentas de Inversión</h3>
+              <p className="text-xs text-slate-400">Entidades financieras donde operas tus compras, ventas y cobro de dividendos.</p>
+            </div>
+            {!isAdding && (
+              <button
+                onClick={() => setIsAdding(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 self-start cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Añadir broker</span>
+              </button>
+            )}
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="bg-[#0e1b30] text-slate-400 font-semibold border-b border-slate-700/80">
                 <tr>
                   <th className="py-3 px-4">Broker</th>
                   <th className="py-3 px-4">Tipo</th>
-                  <th className="py-3 px-4">Activo</th>
-                  <th className="py-3 px-4 text-center">Editar</th>
+                  <th className="py-3 px-4">Estado</th>
+                  <th className="py-3 px-4 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -128,7 +385,7 @@ export function BrokersConfigView({
                     <td className="py-3.5 px-4">
                       <button
                         onClick={() => onToggleBroker(brk.id)}
-                        className={`px-3 py-1 rounded-md text-[11px] font-bold border transition-colors ${
+                        className={`px-3 py-1 rounded-md text-[11px] font-bold border transition-colors cursor-pointer ${
                           brk.active
                             ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                             : 'bg-slate-800 text-slate-500 border-slate-700'
@@ -140,7 +397,8 @@ export function BrokersConfigView({
                     <td className="py-3.5 px-4 text-center">
                       <button
                         onClick={() => onToggleBroker(brk.id)}
-                        className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                        title="Cambiar estado"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -151,65 +409,56 @@ export function BrokersConfigView({
             </table>
           </div>
 
-          {/* Add Broker button - Screen 11 */}
-          <div className="pt-2">
-            {!isAdding ? (
-              <button
-                onClick={() => setIsAdding(true)}
-                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Añadir broker</span>
-              </button>
-            ) : (
-              <form onSubmit={handleSaveBroker} className="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3">
-                <h4 className="text-xs font-bold text-white">Nuevo Broker</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    value={newBrokerName}
-                    onChange={e => setNewBrokerName(e.target.value)}
-                    placeholder="Nombre del broker (ej. MyInvestor, Scalable)"
-                    required
-                    className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-                  />
-                  <select
-                    value={newBrokerType}
-                    onChange={e => setNewBrokerType(e.target.value)}
-                    className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-                  >
-                    <option value="USA / Europa">USA / Europa</option>
-                    <option value="España">España</option>
-                    <option value="Europa">Europa</option>
-                    <option value="Global">Global</option>
-                  </select>
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setIsAdding(false)}
-                    className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-xs"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs"
-                  >
-                    Guardar
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
+          {/* Add Broker form */}
+          {isAdding && (
+            <form onSubmit={handleSaveBroker} className="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3">
+              <h4 className="text-xs font-bold text-white">Nuevo Broker</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={newBrokerName}
+                  onChange={e => setNewBrokerName(e.target.value)}
+                  placeholder="Nombre del broker (ej. MyInvestor, Scalable, Degiro)"
+                  required
+                  className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                />
+                <select
+                  value={newBrokerType}
+                  onChange={e => setNewBrokerType(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                >
+                  <option value="USA / Europa">USA / Europa</option>
+                  <option value="España">España</option>
+                  <option value="Europa">Europa</option>
+                  <option value="Global">Global</option>
+                </select>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsAdding(false)}
+                  className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-xs cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs cursor-pointer"
+                >
+                  Guardar Broker
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       )}
 
-      {/* TAB 2: IMPUESTOS */}
+      {/* TAB 4: IMPUESTOS */}
       {activeTab === 'impuestos' && (
         <div className="bg-[#12233f] border border-slate-700/70 rounded-2xl p-6 shadow-xl space-y-4">
           <h3 className="text-sm font-bold text-white">Configuración Fiscal & Retenciones</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <p className="text-xs text-slate-400">Porcentajes de retención aplicados por defecto al calcular dividendos netos e informes fiscales.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
             <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
               <label className="font-semibold text-slate-300 block">Retención en Origen USA (W-8BEN):</label>
               <div className="flex items-center gap-2">
@@ -221,7 +470,7 @@ export function BrokersConfigView({
                 />
                 <span className="text-slate-400 font-bold">%</span>
               </div>
-              <p className="text-[11px] text-slate-500">Convenio de doble imposición España - Estados Unidos.</p>
+              <p className="text-[11px] text-slate-500">Convenio de doble imposición internacional España - Estados Unidos.</p>
             </div>
 
             <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
@@ -235,201 +484,58 @@ export function BrokersConfigView({
                 />
                 <span className="text-slate-400 font-bold">%</span>
               </div>
-              <p className="text-[11px] text-slate-500">Tipo de retención estándar a cuenta del IRPF.</p>
+              <p className="text-[11px] text-slate-500">Tipo de retención estándar a cuenta del IRPF sobre el capital mobiliario.</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 3: DIVISAS */}
+      {/* TAB 5: DIVISAS */}
       {activeTab === 'divisas' && (
         <div className="bg-[#12233f] border border-slate-700/70 rounded-2xl p-6 shadow-xl space-y-4">
           <h3 className="text-sm font-bold text-white">Tipos de Cambio Oficiales respecto al Euro (€)</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <p className="text-xs text-slate-400">Conversión de activos en dólares estadounidenses o libras esterlinas a la moneda base (EUR).</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
             <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
               <label className="font-semibold text-slate-300 block">Dólar Estadounidense (EUR / USD):</label>
-              <input
-                type="number"
-                step="0.001"
-                value={usdEurRate}
-                onChange={e => setUsdEurRate(Number(e.target.value))}
-                className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono w-32"
-              />
-              <p className="text-[11px] text-slate-400">1 EUR ≈ {usdEurRate} USD</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.001"
+                  value={usdEurRate}
+                  onChange={e => setUsdEurRate(Number(e.target.value))}
+                  className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono w-28"
+                />
+                <span className="text-slate-400 font-bold">$ / €</span>
+              </div>
+              <p className="text-[11px] text-slate-500">1 € = {(usdEurRate).toFixed(3)} USD (aprox. {(1 / usdEurRate).toFixed(4)} € por dólar)</p>
             </div>
 
             <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
               <label className="font-semibold text-slate-300 block">Libra Esterlina (EUR / GBP):</label>
-              <input
-                type="number"
-                step="0.001"
-                value={gbpEurRate}
-                onChange={e => setGbpEurRate(Number(e.target.value))}
-                className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono w-32"
-              />
-              <p className="text-[11px] text-slate-400">1 EUR ≈ {gbpEurRate} GBP</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: NOTIFICACIONES */}
-      {activeTab === 'notificaciones' && (
-        <div className="bg-[#12233f] border border-slate-700/70 rounded-2xl p-6 shadow-xl space-y-4 text-xs">
-          <h3 className="text-sm font-bold text-white">Alertas de Cartera</h3>
-          <div className="space-y-3">
-            {[
-              { title: 'Aviso de cobro de dividendos', desc: 'Notificar 3 días antes de la fecha de pago estimada', enabled: true },
-              { title: 'Variación de precio diaria', desc: 'Alertar si una posición oscila más de un 5% en la sesión', enabled: false },
-              { title: 'Recordatorio fiscal IRPF', desc: 'Aviso en campaña de renta con el informe generado', enabled: true },
-            ].map((n, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                <div>
-                  <span className="font-bold text-white block">{n.title}</span>
-                  <span className="text-slate-400 text-[11px]">{n.desc}</span>
-                </div>
+              <div className="flex items-center gap-2">
                 <input
-                  type="checkbox"
-                  defaultChecked={n.enabled}
-                  className="w-4 h-4 rounded text-blue-600 bg-slate-950 border-slate-700"
+                  type="number"
+                  step="0.001"
+                  value={gbpEurRate}
+                  onChange={e => setGbpEurRate(Number(e.target.value))}
+                  className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-white font-mono w-28"
                 />
+                <span className="text-slate-400 font-bold">£ / €</span>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 0: SEGURIDAD Y COPIAS DE SEGURIDAD CIFRADAS */}
-      {activeTab === 'seguridad' && (
-        <div className="space-y-6">
-          {/* Security Status Card */}
-          <div className="bg-[#12233f] border border-slate-700/70 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${
-                  hasPassword
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-emerald-950/40'
-                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-amber-950/40'
-                }`}
-              >
-                {hasPassword ? <Lock className="w-6 h-6" /> : <Unlock className="w-6 h-6" />}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-white">
-                    {hasPassword ? 'Protección por Contraseña Activa' : 'Protección por Contraseña Desactivada'}
-                  </h3>
-                  <span
-                    className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
-                      hasPassword
-                        ? 'bg-emerald-950 border border-emerald-700 text-emerald-300'
-                        : 'bg-amber-950 border border-amber-700 text-amber-300'
-                    }`}
-                  >
-                    {hasPassword ? 'Protegida' : 'Acceso Libre'}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  {hasPassword
-                    ? 'Se solicita la contraseña obligatoria al abrir la aplicación y al descifrar copias de seguridad.'
-                    : 'Puedes configurar una contraseña para blindar el acceso a tus datos de inversiones.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5 w-full md:w-auto">
-              {hasPassword && onLockApp && (
-                <button
-                  onClick={onLockApp}
-                  className="flex-1 md:flex-none px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 border border-slate-700 cursor-pointer"
-                >
-                  <Lock className="w-4 h-4 text-cyan-400" />
-                  <span>Bloquear pantalla</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => onOpenSecurityModal && onOpenSecurityModal('password')}
-                className="flex-1 md:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-950/40 cursor-pointer"
-              >
-                <KeyRound className="w-4 h-4" />
-                <span>{hasPassword ? 'Cambiar contraseña' : 'Crear contraseña'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 3 Main Action Cards for Encrypted Backups */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Action 1: Create encrypted backup */}
-            <div className="bg-[#12233f] border border-cyan-800/60 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-cyan-500 transition-colors">
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
-                  <Download className="w-5 h-5" />
-                </div>
-                <h4 className="font-bold text-white text-sm">Crear Copia Cifrada</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Genera un archivo <code>.cartera</code> con <strong>fecha y hora exacta en el nombre</strong>, protegido mediante <strong>cifrado AES-256</strong>. Nadie podrá abrirlo sin la clave.
-                </p>
-              </div>
-              <button
-                onClick={() => onOpenSecurityModal && onOpenSecurityModal('backup')}
-                className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Exportar Copia Cifrada</span>
-              </button>
-            </div>
-
-            {/* Action 2: Import & restore backup */}
-            <div className="bg-[#12233f] border border-emerald-800/60 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-emerald-500 transition-colors">
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
-                  <Upload className="w-5 h-5" />
-                </div>
-                <h4 className="font-bold text-white text-sm">Importar Copia de Seguridad</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Carga un archivo de respaldo. La aplicación te <strong>pedirá la contraseña</strong> para descifrarlo, mostrará la fecha y datos, y restaurará tu cartera.
-                </p>
-              </div>
-              <button
-                onClick={() => onOpenSecurityModal && onOpenSecurityModal('import')}
-                className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <FileKey className="w-4 h-4" />
-                <span>Importar con Contraseña</span>
-              </button>
-            </div>
-
-            {/* Action 3: Inspect / open file without restoring */}
-            <div className="bg-[#12233f] border border-amber-800/60 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-amber-500 transition-colors">
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
-                  <FileKey className="w-5 h-5" />
-                </div>
-                <h4 className="font-bold text-white text-sm">Examinar Archivo Cifrado</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Introduce la contraseña para inspeccionar y ver el contenido de cualquier copia de seguridad sin modificar tus datos actuales.
-                </p>
-              </div>
-              <button
-                onClick={() => onOpenSecurityModal && onOpenSecurityModal('inspect')}
-                className="w-full py-2.5 px-4 bg-amber-600/90 hover:bg-amber-500 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <KeyRound className="w-4 h-4" />
-                <span>Abrir / Examinar Copia</span>
-              </button>
+              <p className="text-[11px] text-slate-500">1 € = {(gbpEurRate).toFixed(3)} GBP</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 5: GENERAL & BACKUPS */}
+      {/* TAB 6: GENERAL & RESET */}
       {activeTab === 'general' && (
         <div className="bg-[#12233f] border border-slate-700/70 rounded-2xl p-6 shadow-xl space-y-6 text-xs">
           <div>
-            <h3 className="text-sm font-bold text-white mb-1">Copia de Seguridad y Respaldo Completo</h3>
+            <h3 className="text-sm font-bold text-white mb-1">Copia de Seguridad Rápida</h3>
             <p className="text-slate-400 leading-relaxed">
-              Exporta todos tus datos (valores, compras, ventas, dividendos, brokers y configuraciones) a un archivo de respaldo seguro en tu ordenador o móvil.
+              Exporta todos tus datos o restaura copias anteriores protegidas por contraseña.
             </p>
 
             <div className="flex flex-wrap gap-3 mt-4">
@@ -446,15 +552,18 @@ export function BrokersConfigView({
                 className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer border border-slate-700"
               >
                 <Upload className="w-4 h-4 text-emerald-400" />
-                <span>Restaurar copia de seguridad (con contraseña)</span>
+                <span>Restaurar copia (pedirá contraseña)</span>
               </button>
             </div>
           </div>
 
           <div className="pt-4 border-t border-slate-800">
-            <h3 className="text-sm font-bold text-white mb-1">Restablecimiento</h3>
+            <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2 text-rose-300">
+              <AlertTriangle className="w-4 h-4 text-rose-400" />
+              <span>Restablecimiento a Valores de Demostración</span>
+            </h3>
             <p className="text-slate-400 leading-relaxed mb-3">
-              Puedes restaurar los valores iniciales de demostración de la cartera en cualquier momento.
+              Si deseas reiniciar la aplicación desde cero con los valores y operaciones de ejemplo iniciales, puedes pulsar el siguiente botón. Se recomienda crear una copia de seguridad antes de restablecer.
             </p>
 
             <button

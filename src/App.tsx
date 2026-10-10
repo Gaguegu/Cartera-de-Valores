@@ -563,6 +563,9 @@ export default function App() {
                 onResetToDefaults={handleResetToDefaults}
                 hasPassword={hasPassword}
                 onLockApp={lockApp}
+                autoLockMinutes={autoLockMinutes}
+                onUpdateAutoLock={updateAutoLock}
+                securityHint={securityHint}
                 onOpenSecurityModal={tab => {
                   setSecurityModalTab(tab || 'backup');
                   setIsSecurityModalOpen(true);

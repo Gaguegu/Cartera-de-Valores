@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   Shield,
@@ -87,6 +87,12 @@ export function SecurityAndBackupModal({
   initialTab = 'backup',
 }: SecurityAndBackupModalProps) {
   const [activeTab, setActiveTab] = useState<'backup' | 'import' | 'password' | 'inspect'>(initialTab);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   // --- TAB 1: BACKUP STATES ---
   const [backupPassword, setBackupPassword] = useState(sessionPassword || '');
