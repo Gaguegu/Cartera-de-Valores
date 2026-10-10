@@ -36,8 +36,12 @@ import { NewDividendModal } from './components/modals/NewDividendModal';
 import { GitHubMobileGuideModal } from './components/modals/GitHubMobileGuideModal';
 import { PrintReportModal } from './components/modals/PrintReportModal';
 import { VersionsModal } from './components/modals/VersionsModal';
+import { SecurityAndBackupModal } from './components/modals/SecurityAndBackupModal';
+import { LockScreen } from './components/security/LockScreen';
 import { UpdateNotificationBanner } from './components/UpdateNotificationBanner';
 import { useAppUpdater } from './hooks/useAppUpdater';
+import { useAppSecurity } from './hooks/useAppSecurity';
+import { AppPortfolioBackupData } from './utils/cryptoService';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<ActiveTab>('dashboard');
@@ -118,6 +122,36 @@ export default function App() {
     dismissJustUpdated,
     dismissManualFeedback,
   } = useAppUpdater();
+
+  // App Security & Encrypted Access Lock
+  const {
+    hasPassword,
+    isLocked,
+    hint: securityHint,
+    autoLockMinutes,
+    sessionPassword,
+    lockApp,
+    unlockApp,
+    setupPassword,
+    changePassword,
+    removePassword,
+    updateAutoLock,
+  } = useAppSecurity();
+
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+  const [securityModalTab, setSecurityModalTab] = useState<'backup' | 'import' | 'password' | 'inspect'>('backup');
+
+  // Restores verified decrypted backup data into app state
+  const handleRestorePortfolioData = (restored: AppPortfolioBackupData) => {
+    if (restored.positions) setPositions(restored.positions);
+    if (restored.operations) setOperations(restored.operations);
+    if (restored.closedPositions) setClosedPositions(restored.closedPositions);
+    if (restored.dividends) setDividends(restored.dividends);
+    if (restored.upcomingDividends) setUpcomingDividends(restored.upcomingDividends);
+    if (restored.brokers) setBrokers(restored.brokers);
+    if (restored.watchlist) setWatchlist(restored.watchlist);
+    if (typeof restored.cashEUR === 'number') setCashEUR(restored.cashEUR);
+  };
 
   // Sync to localStorage
   useEffect(() => {
@@ -348,6 +382,50 @@ export default function App() {
 
   const totalPortfolioValue = positions.reduce((acc, p) => acc + p.currentValueEUR, 0);
 
+  // If application is locked with password protection
+  if (isLocked) {
+    return (
+      <div className="min-h-screen bg-[#070e1c] text-slate-100 flex flex-col font-sans">
+        <LockScreen
+          onUnlock={unlockApp}
+          hint={securityHint}
+          onOpenRestoreFromLock={() => {
+            setSecurityModalTab('import');
+            setIsSecurityModalOpen(true);
+          }}
+        />
+
+        {/* Security & Backup Modal accessible from lock screen if restoring */}
+        <SecurityAndBackupModal
+          isOpen={isSecurityModalOpen}
+          onClose={() => setIsSecurityModalOpen(false)}
+          hasPassword={hasPassword}
+          hint={securityHint}
+          autoLockMinutes={autoLockMinutes}
+          sessionPassword={sessionPassword}
+          onSetupPassword={setupPassword}
+          onChangePassword={changePassword}
+          onRemovePassword={removePassword}
+          onUpdateAutoLock={updateAutoLock}
+          onLockApp={lockApp}
+          portfolioData={{
+            positions,
+            operations,
+            closedPositions,
+            dividends,
+            upcomingDividends,
+            brokers,
+            watchlist,
+            cashEUR,
+          }}
+          onRestoreData={handleRestorePortfolioData}
+          currentVersion={currentVersion}
+          initialTab={securityModalTab}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0a1424] text-slate-100 flex flex-col font-sans">
       {/* Update Notification Banner / Toast */}
@@ -376,6 +454,12 @@ export default function App() {
         onCheckForUpdates={() => checkForUpdates(true)}
         onInstallNow={() => handleInstallNow()}
         onForceReload={handleForceReload}
+        hasPassword={hasPassword}
+        onLockApp={lockApp}
+        onOpenSecurityModal={tab => {
+          setSecurityModalTab(tab || 'backup');
+          setIsSecurityModalOpen(true);
+        }}
       />
 
       {/* Main layout container with sidebar and content */}
@@ -392,6 +476,12 @@ export default function App() {
           onCheckForUpdates={() => checkForUpdates(true)}
           isCheckingVersion={isCheckingUpdates}
           hasPendingUpdate={Boolean(updateAvailable)}
+          hasPassword={hasPassword}
+          onLockApp={lockApp}
+          onOpenSecurityModal={tab => {
+            setSecurityModalTab(tab || 'backup');
+            setIsSecurityModalOpen(true);
+          }}
         />
 
         {/* Main Content Area */}
@@ -471,6 +561,12 @@ export default function App() {
                 onAddBroker={handleAddBroker}
                 onToggleBroker={handleToggleBroker}
                 onResetToDefaults={handleResetToDefaults}
+                hasPassword={hasPassword}
+                onLockApp={lockApp}
+                onOpenSecurityModal={tab => {
+                  setSecurityModalTab(tab || 'backup');
+                  setIsSecurityModalOpen(true);
+                }}
               />
             )}
           </div>
@@ -541,6 +637,34 @@ export default function App() {
         onCheckForUpdates={() => checkForUpdates(true)}
         onInstallUpdate={handleInstallNow}
         onToggleAutoUpdate={handleToggleAutoUpdate}
+      />
+
+      {/* MODAL 7: Seguridad y Copias de Seguridad Cifradas (AES-256) */}
+      <SecurityAndBackupModal
+        isOpen={isSecurityModalOpen}
+        onClose={() => setIsSecurityModalOpen(false)}
+        hasPassword={hasPassword}
+        hint={securityHint}
+        autoLockMinutes={autoLockMinutes}
+        sessionPassword={sessionPassword}
+        onSetupPassword={setupPassword}
+        onChangePassword={changePassword}
+        onRemovePassword={removePassword}
+        onUpdateAutoLock={updateAutoLock}
+        onLockApp={lockApp}
+        portfolioData={{
+          positions,
+          operations,
+          closedPositions,
+          dividends,
+          upcomingDividends,
+          brokers,
+          watchlist,
+          cashEUR,
+        }}
+        onRestoreData={handleRestorePortfolioData}
+        currentVersion={currentVersion}
+        initialTab={securityModalTab}
       />
     </div>
   );

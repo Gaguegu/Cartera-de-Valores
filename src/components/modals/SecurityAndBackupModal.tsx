@@ -1,0 +1,1069 @@
+import React, { useState, useRef } from 'react';
+import {
+  X,
+  Shield,
+  ShieldCheck,
+  Lock,
+  Unlock,
+  KeyRound,
+  Download,
+  Upload,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  AlertCircle,
+  FileKey,
+  Database,
+  Calendar,
+  Clock,
+  Briefcase,
+  ArrowLeftRight,
+  Coins,
+  DollarSign,
+  HelpCircle,
+  Layers,
+  FileCheck2,
+} from 'lucide-react';
+import {
+  StockPosition,
+  Operation,
+  ClosedPosition,
+  DividendRecord,
+  UpcomingDividend,
+  Broker,
+  WatchlistItem,
+} from '../../types/portfolio';
+import {
+  createEncryptedBackup,
+  decryptAndValidateBackup,
+  AppPortfolioBackupData,
+  formatBackupDateTime,
+} from '../../utils/cryptoService';
+
+interface SecurityAndBackupModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  // Security Hook State
+  hasPassword: boolean;
+  hint: string;
+  autoLockMinutes: number;
+  sessionPassword: string | null;
+  onSetupPassword: (password: string, hint?: string) => Promise<{ success: boolean; error?: string }>;
+  onChangePassword: (current: string, newPass: string, hint?: string) => Promise<{ success: boolean; error?: string }>;
+  onRemovePassword: (current: string) => Promise<{ success: boolean; error?: string }>;
+  onUpdateAutoLock: (minutes: number) => void;
+  onLockApp: () => void;
+  // Current app data for backup
+  portfolioData: {
+    positions: StockPosition[];
+    operations: Operation[];
+    closedPositions: ClosedPosition[];
+    dividends: DividendRecord[];
+    upcomingDividends: UpcomingDividend[];
+    brokers: Broker[];
+    watchlist: WatchlistItem[];
+    cashEUR: number;
+  };
+  onRestoreData: (restored: AppPortfolioBackupData) => void;
+  currentVersion?: string;
+  initialTab?: 'backup' | 'import' | 'password' | 'inspect';
+}
+
+export function SecurityAndBackupModal({
+  isOpen,
+  onClose,
+  hasPassword,
+  hint,
+  autoLockMinutes,
+  sessionPassword,
+  onSetupPassword,
+  onChangePassword,
+  onRemovePassword,
+  onUpdateAutoLock,
+  onLockApp,
+  portfolioData,
+  onRestoreData,
+  currentVersion = 'v1.0.0',
+  initialTab = 'backup',
+}: SecurityAndBackupModalProps) {
+  const [activeTab, setActiveTab] = useState<'backup' | 'import' | 'password' | 'inspect'>(initialTab);
+
+  // --- TAB 1: BACKUP STATES ---
+  const [backupPassword, setBackupPassword] = useState(sessionPassword || '');
+  const [backupConfirmPassword, setBackupConfirmPassword] = useState(sessionPassword || '');
+  const [showBackupPass, setShowBackupPass] = useState(false);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const [backupSuccess, setBackupSuccess] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // --- TAB 2 & 3: IMPORT & INSPECTION STATES ---
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [importPassword, setImportPassword] = useState('');
+  const [showImportPass, setShowImportPass] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [isDecrypting, setIsDecrypting] = useState(false);
+  const [decryptedResult, setDecryptedResult] = useState<{
+    data: AppPortfolioBackupData;
+    metadata: {
+      createdAt: string;
+      createdAtFormatted: string;
+      version: string;
+      summary: any;
+    };
+  } | null>(null);
+  const [restoreConfirmed, setRestoreConfirmed] = useState(false);
+
+  // --- TAB 4: PASSWORD MANAGEMENT STATES ---
+  const [setupPassInput, setSetupPassInput] = useState('');
+  const [setupPassConfirm, setSetupPassConfirm] = useState('');
+  const [setupHintInput, setSetupHintInput] = useState('');
+  const [currentPassInput, setCurrentPassInput] = useState('');
+  const [newPassInput, setNewPassInput] = useState('');
+  const [newPassConfirm, setNewPassConfirm] = useState('');
+  const [newHintInput, setNewHintInput] = useState(hint || '');
+  const [showPassToggles, setShowPassToggles] = useState<{ [k: string]: boolean }>({});
+  const [passwordStatusMsg, setPasswordStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isProcessingPass, setIsProcessingPass] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  if (!isOpen) return null;
+
+  // Handler: Export encrypted backup
+  const handleExportEncryptedBackup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBackupError(null);
+    setBackupSuccess(null);
+
+    const passToUse = backupPassword || sessionPassword;
+    if (!passToUse || passToUse.trim().length === 0) {
+      setBackupError('Debes indicar una contraseña para proteger y cifrar el archivo de copia.');
+      return;
+    }
+
+    if (!sessionPassword && backupPassword !== backupConfirmPassword) {
+      setBackupError('Las contraseñas no coinciden. Asegúrate de escribirlas idénticas.');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const { blob, filename, packageData } = await createEncryptedBackup(
+        {
+          positions: portfolioData.positions,
+          operations: portfolioData.operations,
+          closedPositions: portfolioData.closedPositions,
+          dividends: portfolioData.dividends,
+          upcomingDividends: portfolioData.upcomingDividends,
+          brokers: portfolioData.brokers,
+          watchlist: portfolioData.watchlist,
+          cashEUR: portfolioData.cashEUR,
+          exportedAt: new Date().toISOString(),
+          exportedAtFormatted: '',
+        },
+        passToUse,
+        currentVersion
+      );
+
+      // Trigger browser download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setBackupSuccess(
+        `¡Copia cifrada descargada con éxito! Nombre: ${filename} (${packageData.createdAtFormatted}). Recuerda que necesitarás esta contraseña para abrirla.`
+      );
+    } catch (err: any) {
+      setBackupError(err?.message || 'Error al generar la copia cifrada.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handler: File picked for import
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImportError(null);
+    setDecryptedResult(null);
+    setRestoreConfirmed(false);
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = evt => {
+      const content = evt.target?.result as string;
+      setFileContent(content);
+    };
+    reader.onerror = () => {
+      setImportError('No se pudo leer el archivo seleccionado.');
+    };
+    reader.readAsText(file);
+  };
+
+  // Handler: Decrypt backup file
+  const handleDecryptFile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fileContent) {
+      setImportError('Por favor selecciona un archivo de copia de seguridad primero.');
+      return;
+    }
+
+    setImportError(null);
+    setIsDecrypting(true);
+
+    try {
+      const result = await decryptAndValidateBackup(fileContent, importPassword);
+      if (!result.success || !result.data) {
+        setImportError(result.error || 'No se pudo descifrar el archivo.');
+        setDecryptedResult(null);
+      } else {
+        setDecryptedResult({
+          data: result.data,
+          metadata: result.metadata as any,
+        });
+      }
+    } catch (err: any) {
+      setImportError(err?.message || 'Error al intentar descifrar el archivo.');
+      setDecryptedResult(null);
+    } finally {
+      setIsDecrypting(false);
+    }
+  };
+
+  // Handler: Confirm and apply restoration
+  const handleApplyRestore = () => {
+    if (!decryptedResult?.data) return;
+
+    onRestoreData(decryptedResult.data);
+    setRestoreConfirmed(true);
+    setTimeout(() => {
+      onClose();
+    }, 1800);
+  };
+
+  // Handler: Setup initial password
+  const handleSetupPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordStatusMsg(null);
+
+    if (setupPassInput !== setupPassConfirm) {
+      setPasswordStatusMsg({ type: 'error', text: 'Las contraseñas no coinciden.' });
+      return;
+    }
+
+    setIsProcessingPass(true);
+    const res = await onSetupPassword(setupPassInput, setupHintInput);
+    setIsProcessingPass(false);
+
+    if (res.success) {
+      setPasswordStatusMsg({ type: 'success', text: '¡Contraseña de acceso configurada correctamente!' });
+      setSetupPassInput('');
+      setSetupPassConfirm('');
+      setSetupHintInput('');
+    } else {
+      setPasswordStatusMsg({ type: 'error', text: res.error || 'Error al configurar contraseña.' });
+    }
+  };
+
+  // Handler: Change password
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordStatusMsg(null);
+
+    if (newPassInput !== newPassConfirm) {
+      setPasswordStatusMsg({ type: 'error', text: 'La nueva contraseña y su confirmación no coinciden.' });
+      return;
+    }
+
+    setIsProcessingPass(true);
+    const res = await onChangePassword(currentPassInput, newPassInput, newHintInput);
+    setIsProcessingPass(false);
+
+    if (res.success) {
+      setPasswordStatusMsg({ type: 'success', text: '¡Contraseña modificada con éxito!' });
+      setCurrentPassInput('');
+      setNewPassInput('');
+      setNewPassConfirm('');
+    } else {
+      setPasswordStatusMsg({ type: 'error', text: res.error || 'Error al cambiar contraseña.' });
+    }
+  };
+
+  // Handler: Remove password
+  const handleRemovePasswordSubmit = async () => {
+    if (!window.confirm('¿Seguro que deseas desactivar la protección por contraseña?')) return;
+    const current = window.prompt('Introduce tu contraseña actual para confirmar la desactivación:');
+    if (!current) return;
+
+    setIsProcessingPass(true);
+    const res = await onRemovePassword(current);
+    setIsProcessingPass(false);
+
+    if (res.success) {
+      setPasswordStatusMsg({ type: 'success', text: 'Protección por contraseña desactivada.' });
+    } else {
+      setPasswordStatusMsg({ type: 'error', text: res.error || 'Contraseña incorrecta.' });
+    }
+  };
+
+  const togglePass = (key: string) => {
+    setShowPassToggles(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-3xl bg-[#0c182b] border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-slate-800 bg-[#0e1d34]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-900/30">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+                Seguridad y Copias de Seguridad
+                <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-800 text-cyan-300">
+                  AES-256 Cifrado
+                </span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                Protección con contraseña antes de entrar y respaldos cifrados con fecha y hora
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer"
+            aria-label="Cerrar modal"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex border-b border-slate-800/80 bg-[#091322] px-4 sm:px-6 gap-2 sm:gap-4 overflow-x-auto text-xs sm:text-sm font-semibold">
+          {[
+            { id: 'backup', label: '1. Crear copia cifrada', icon: <Download className="w-4 h-4 text-cyan-400" /> },
+            { id: 'import', label: '2. Importar copia', icon: <Upload className="w-4 h-4 text-emerald-400" /> },
+            { id: 'inspect', label: '3. Abrir / Examinar copia', icon: <FileKey className="w-4 h-4 text-amber-400" /> },
+            { id: 'password', label: '4. Contraseña de la app', icon: <KeyRound className="w-4 h-4 text-purple-400" /> },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`py-3 px-3 border-b-2 font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                activeTab === tab.id
+                  ? 'border-cyan-500 text-cyan-300 bg-cyan-500/5'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-slate-200 text-xs sm:text-sm">
+          {/* =========================================================================
+              TAB 1: CREAR COPIA CIFRADA CON FECHA Y HORA
+             ========================================================================= */}
+          {activeTab === 'backup' && (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              {/* Informative Banner */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-950/70 to-slate-900 border border-blue-900/60 flex items-start gap-3.5">
+                <Shield className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h4 className="font-bold text-white text-sm">Copia de seguridad protegida con contraseña</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    El archivo generado contiene la <strong>indicación exacta de fecha y hora</strong> y está{' '}
+                    <strong>100% cifrado con AES-256 militar</strong>. Nadie podrá abrir el archivo ni ver tus compras,
+                    ventas o dividendos sin introducir la contraseña.
+                  </p>
+                </div>
+              </div>
+
+              {/* Data Summary to be Included */}
+              <div className="bg-[#101e33] border border-slate-700/80 rounded-2xl p-4 space-y-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                  Contenido incluido en la copia:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="bg-[#0a1424] p-3 rounded-xl border border-slate-800">
+                    <span className="text-slate-400 text-[11px] block flex items-center gap-1">
+                      <Briefcase className="w-3 h-3 text-blue-400" /> Posiciones
+                    </span>
+                    <span className="text-lg font-black text-white">{portfolioData.positions.length}</span>
+                  </div>
+                  <div className="bg-[#0a1424] p-3 rounded-xl border border-slate-800">
+                    <span className="text-slate-400 text-[11px] block flex items-center gap-1">
+                      <ArrowLeftRight className="w-3 h-3 text-cyan-400" /> Operaciones
+                    </span>
+                    <span className="text-lg font-black text-white">{portfolioData.operations.length}</span>
+                  </div>
+                  <div className="bg-[#0a1424] p-3 rounded-xl border border-slate-800">
+                    <span className="text-slate-400 text-[11px] block flex items-center gap-1">
+                      <Coins className="w-3 h-3 text-emerald-400" /> Dividendos
+                    </span>
+                    <span className="text-lg font-black text-white">{portfolioData.dividends.length}</span>
+                  </div>
+                  <div className="bg-[#0a1424] p-3 rounded-xl border border-slate-800">
+                    <span className="text-slate-400 text-[11px] block flex items-center gap-1">
+                      <Layers className="w-3 h-3 text-amber-400" /> Cerradas
+                    </span>
+                    <span className="text-lg font-black text-white">{portfolioData.closedPositions.length}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Export Form */}
+              <form onSubmit={handleExportEncryptedBackup} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
+                    Contraseña para cifrar el archivo de copia
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showBackupPass ? 'text' : 'password'}
+                      value={backupPassword}
+                      onChange={e => setBackupPassword(e.target.value)}
+                      placeholder="Introduce la contraseña que protegerá este archivo..."
+                      required
+                      className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 pr-11 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowBackupPass(!showBackupPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-1"
+                    >
+                      {showBackupPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {sessionPassword && (
+                    <p className="text-[11px] text-cyan-400/90 mt-1 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Rellenada automáticamente con la contraseña de tu sesión actual. Puedes cambiarla si prefieres otra.
+                    </p>
+                  )}
+                </div>
+
+                {!sessionPassword && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                      Repite la contraseña para confirmar
+                    </label>
+                    <input
+                      type={showBackupPass ? 'text' : 'password'}
+                      value={backupConfirmPassword}
+                      onChange={e => setBackupConfirmPassword(e.target.value)}
+                      placeholder="Confirmar contraseña..."
+                      required
+                      className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                    />
+                  </div>
+                )}
+
+                {backupError && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                    <span>{backupError}</span>
+                  </div>
+                )}
+
+                {backupSuccess && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>{backupSuccess}</span>
+                  </div>
+                )}
+
+                <div className="pt-2 flex flex-col sm:flex-row gap-3 items-center">
+                  <button
+                    type="submit"
+                    disabled={isExporting}
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-950/50 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60"
+                  >
+                    {isExporting ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        <span>Generar y Descargar Copia Cifrada (.cartera)</span>
+                      </>
+                    )}
+                  </button>
+
+                  <span className="text-[11px] text-slate-400 text-center sm:text-left">
+                    El nombre incluirá automáticamente fecha y hora exacta (ej. <em>Copia_Seguridad_Cartera_2026-10-10_12-45-30.cartera</em>)
+                  </span>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* =========================================================================
+              TAB 2: IMPORTAR Y RESTAURAR COPIA (PIDE CONTRASEÑA OBLIGATORIA)
+             ========================================================================= */}
+          {activeTab === 'import' && (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-800/50 flex items-start gap-3">
+                <FileKey className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h4 className="font-bold text-white text-sm">Importación y Restauración Segura</h4>
+                  <p className="text-xs text-slate-300">
+                    Selecciona tu archivo de copia de seguridad (<code>.cartera</code> o <code>.json</code>). La
+                    aplicación te pedirá la contraseña correspondiente antes de permitir abrirlo o restaurarlo.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 1: Select File */}
+              <div className="bg-[#101e33] border border-slate-700/80 rounded-2xl p-5 space-y-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                  Paso 1: Seleccionar archivo de copia de seguridad
+                </span>
+
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-slate-700 hover:border-cyan-500 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-[#0a1424]/60 hover:bg-[#0a1424]"
+                >
+                  <Upload className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
+                  <p className="font-semibold text-white text-sm">
+                    {selectedFile ? selectedFile.name : 'Haz clic para seleccionar el archivo de respaldo'}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {selectedFile
+                      ? `Tamaño: ${(selectedFile.size / 1024).toFixed(1)} KB`
+                      : 'Formatos admitidos: .cartera, .json, .carterasafe'}
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".cartera,.json,.enc,.carterasafe"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Step 2: Enter Password to Decrypt */}
+              {fileContent && !decryptedResult && (
+                <form onSubmit={handleDecryptFile} className="bg-[#101e33] border border-slate-700/80 rounded-2xl p-5 space-y-4">
+                  <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 block flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5" />
+                    Paso 2: Introduce la contraseña para descifrar este archivo
+                  </span>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Contraseña con la que se protegió la copia:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showImportPass ? 'text' : 'password'}
+                        value={importPassword}
+                        onChange={e => setImportPassword(e.target.value)}
+                        placeholder="Contraseña del archivo de copia..."
+                        required
+                        className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 pr-11 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowImportPass(!showImportPass)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-1"
+                      >
+                        {showImportPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {importError && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>{importError}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isDecrypting || !importPassword}
+                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isDecrypting ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Unlock className="w-4 h-4" />
+                        <span>Validar Contraseña y Descifrar Copia</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {/* Step 3: Decrypted Preview & Confirmation */}
+              {decryptedResult && (
+                <div className="bg-[#101e33] border border-emerald-500/50 rounded-2xl p-5 space-y-4 animate-in fade-in">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      <span>Archivo descifrado correctamente con la clave válida</span>
+                    </div>
+                    <span className="text-xs text-slate-400 font-mono">
+                      {decryptedResult.metadata.version}
+                    </span>
+                  </div>
+
+                  {/* Metadata: Date and Time */}
+                  <div className="p-3 bg-[#0a1424] rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-slate-300">
+                      <Calendar className="w-4 h-4 text-cyan-400" />
+                      <span><strong>Fecha y hora de creación:</strong> {decryptedResult.metadata.createdAtFormatted}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{new Date(decryptedResult.metadata.createdAt).toLocaleTimeString('es-ES')}</span>
+                    </div>
+                  </div>
+
+                  {/* Summary Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="bg-[#0a1424] p-3 rounded-xl border border-slate-800 text-xs">
+                      <span className="text-slate-400 block text-[11px]">Posiciones</span>
+                      <span className="text-base font-black text-white">{decryptedResult.data.positions?.length || 0}</span>
+                    </div>
+                    <div className="bg-[#0a1424] p-3 rounded-xl border border-slate-800 text-xs">
+                      <span className="text-slate-400 block text-[11px]">Operaciones</span>
+                      <span className="text-base font-black text-white">{decryptedResult.data.operations?.length || 0}</span>
+                    </div>
+                    <div className="bg-[#0a1424] p-3 rounded-xl border border-slate-800 text-xs">
+                      <span className="text-slate-400 block text-[11px]">Dividendos</span>
+                      <span className="text-base font-black text-white">{decryptedResult.data.dividends?.length || 0}</span>
+                    </div>
+                    <div className="bg-[#0a1424] p-3 rounded-xl border border-slate-800 text-xs">
+                      <span className="text-slate-400 block text-[11px]">Cerradas</span>
+                      <span className="text-base font-black text-white">{decryptedResult.data.closedPositions?.length || 0}</span>
+                    </div>
+                  </div>
+
+                  {restoreConfirmed ? (
+                    <div className="p-4 rounded-xl bg-emerald-500/20 border border-emerald-500 text-emerald-200 text-center font-bold text-sm">
+                      ¡Datos restaurados con éxito en la aplicación! Actualizando vista...
+                    </div>
+                  ) : (
+                    <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={handleApplyRestore}
+                        className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      >
+                        <FileCheck2 className="w-4 h-4" />
+                        <span>Restaurar y Reemplazar Datos en la Cartera</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setDecryptedResult(null);
+                          setSelectedFile(null);
+                          setFileContent(null);
+                        }}
+                        className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* =========================================================================
+              TAB 3: ABRIR / EXAMINAR COPIA SIN RESTAURAR (AUDITORÍA & LECTURA)
+             ========================================================================= */}
+          {activeTab === 'inspect' && (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/60 to-slate-900 border border-amber-800/50 flex items-start gap-3">
+                <FileKey className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h4 className="font-bold text-white text-sm">Inspeccionar archivo cifrado sin modificar tu cartera actual</h4>
+                  <p className="text-xs text-slate-300">
+                    Comprueba que el archivo de copia no se puede abrir sin la contraseña y examina su contenido detallado (valores, fechas y precios) de forma segura en modo solo lectura.
+                  </p>
+                </div>
+              </div>
+
+              {!decryptedResult ? (
+                <div className="space-y-4">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-slate-700 hover:border-amber-500 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-[#0a1424]/60 hover:bg-[#0a1424]"
+                  >
+                    <FileKey className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+                    <p className="font-semibold text-white text-sm">
+                      {selectedFile ? selectedFile.name : 'Selecciona el archivo para examinar'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Si lo abres con bloc de notas solo verás caracteres cifrados AES-256.
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".cartera,.json,.enc,.carterasafe"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {fileContent && (
+                    <form onSubmit={handleDecryptFile} className="space-y-3 bg-[#101e33] p-4 rounded-2xl border border-slate-700">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Introduce la contraseña para descifrar y visualizar:
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type={showImportPass ? 'text' : 'password'}
+                          value={importPassword}
+                          onChange={e => setImportPassword(e.target.value)}
+                          placeholder="Contraseña..."
+                          required
+                          className="flex-1 bg-[#0a1424] border border-slate-700 focus:border-amber-500 rounded-xl px-4 py-2.5 text-sm text-white"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isDecrypting}
+                          className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          {isDecrypting ? 'Descifrando...' : 'Examinar'}
+                        </button>
+                      </div>
+                      {importError && (
+                        <p className="text-rose-400 text-xs flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" /> {importError}
+                        </p>
+                      )}
+                    </form>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-3 bg-[#0a1424] rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+                    <span className="text-slate-300">
+                      <strong>Fecha de la copia:</strong> {decryptedResult.metadata.createdAtFormatted}
+                    </span>
+                    <button
+                      onClick={() => setDecryptedResult(null)}
+                      className="text-cyan-400 hover:underline"
+                    >
+                      Examinar otro archivo
+                    </button>
+                  </div>
+
+                  {/* List of positions in the backup */}
+                  <div className="bg-[#101e33] p-4 rounded-2xl border border-slate-750 space-y-3">
+                    <h5 className="font-bold text-white text-xs uppercase tracking-wider">
+                      Posiciones guardadas ({decryptedResult.data.positions?.length || 0}):
+                    </h5>
+                    <div className="max-h-48 overflow-y-auto divide-y divide-slate-800 text-xs">
+                      {decryptedResult.data.positions?.map(pos => (
+                        <div key={pos.id} className="py-2 flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-white">{pos.symbol}</span>
+                            <span className="text-slate-400 ml-2">{pos.company}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-semibold text-white">{pos.shares} accs.</span>
+                            <span className="text-slate-400 ml-2">a {pos.buyPrice} €</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* =========================================================================
+              TAB 4: CONFIGURACIÓN DE CONTRASEÑA DE LA APLICACIÓN
+             ========================================================================= */}
+          {activeTab === 'password' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              {/* Status Header */}
+              <div className="p-4 rounded-2xl bg-[#101e33] border border-slate-700/80 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                      hasPassword ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {hasPassword ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white text-sm">
+                      {hasPassword ? 'Protección por contraseña ACTIVADA' : 'Sin contraseña de acceso'}
+                    </h4>
+                    <p className="text-xs text-slate-400">
+                      {hasPassword
+                        ? 'Se solicitará la contraseña cada vez que se inicie la aplicación o se bloquee.'
+                        : 'Establece una contraseña para proteger la entrada a la aplicación.'}
+                    </p>
+                  </div>
+                </div>
+
+                {hasPassword && (
+                  <button
+                    onClick={onLockApp}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-950/40 cursor-pointer"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Bloquear ahora</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Status Messages */}
+              {passwordStatusMsg && (
+                <div
+                  className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+                    passwordStatusMsg.type === 'success'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                  }`}
+                >
+                  {passwordStatusMsg.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  )}
+                  <span>{passwordStatusMsg.text}</span>
+                </div>
+              )}
+
+              {/* Form A: Initial Password Setup (if hasPassword === false) */}
+              {!hasPassword ? (
+                <form onSubmit={handleSetupPasswordSubmit} className="bg-[#101e33] border border-slate-700/80 rounded-2xl p-5 space-y-4">
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-cyan-400" />
+                    Crear contraseña maestra de la aplicación
+                  </h4>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Contraseña nueva (mínimo 4 caracteres)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassToggles['setup'] ? 'text' : 'password'}
+                        value={setupPassInput}
+                        onChange={e => setSetupPassInput(e.target.value)}
+                        placeholder="Introduce tu contraseña..."
+                        required
+                        minLength={4}
+                        className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white pr-11"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePass('setup')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1"
+                      >
+                        {showPassToggles['setup'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Confirmar contraseña
+                    </label>
+                    <input
+                      type={showPassToggles['setup'] ? 'text' : 'password'}
+                      value={setupPassConfirm}
+                      onChange={e => setSetupPassConfirm(e.target.value)}
+                      placeholder="Repite la contraseña..."
+                      required
+                      minLength={4}
+                      className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
+                      <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                      Pista de contraseña (opcional para ayudarte a recordarla)
+                    </label>
+                    <input
+                      type="text"
+                      value={setupHintInput}
+                      onChange={e => setSetupHintInput(e.target.value)}
+                      placeholder="Ej. Mi fecha favorita o mascota..."
+                      className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2 text-sm text-white"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isProcessingPass}
+                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl text-sm shadow-md cursor-pointer transition-all"
+                  >
+                    {isProcessingPass ? 'Configurando...' : 'Activar Protección con Contraseña'}
+                  </button>
+                </form>
+              ) : (
+                /* Form B: Change Password (if hasPassword === true) */
+                <form onSubmit={handleChangePasswordSubmit} className="bg-[#101e33] border border-slate-700/80 rounded-2xl p-5 space-y-4">
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-cyan-400" />
+                    Cambiar contraseña de acceso
+                  </h4>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Contraseña actual
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassToggles['current'] ? 'text' : 'password'}
+                        value={currentPassInput}
+                        onChange={e => setCurrentPassInput(e.target.value)}
+                        placeholder="Contraseña actual..."
+                        required
+                        className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white pr-11"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePass('current')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1"
+                      >
+                        {showPassToggles['current'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        Nueva contraseña
+                      </label>
+                      <input
+                        type={showPassToggles['current'] ? 'text' : 'password'}
+                        value={newPassInput}
+                        onChange={e => setNewPassInput(e.target.value)}
+                        placeholder="Nueva contraseña..."
+                        required
+                        minLength={4}
+                        className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        Confirmar nueva contraseña
+                      </label>
+                      <input
+                        type={showPassToggles['current'] ? 'text' : 'password'}
+                        value={newPassConfirm}
+                        onChange={e => setNewPassConfirm(e.target.value)}
+                        placeholder="Repetir nueva..."
+                        required
+                        minLength={4}
+                        className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
+                      <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                      Pista de contraseña (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={newHintInput}
+                      onChange={e => setNewHintInput(e.target.value)}
+                      placeholder="Pista para recordar..."
+                      className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2 text-sm text-white"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={isProcessingPass}
+                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition-all cursor-pointer"
+                    >
+                      {isProcessingPass ? 'Guardando...' : 'Actualizar Contraseña'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleRemovePasswordSubmit}
+                      disabled={isProcessingPass}
+                      className="px-4 py-3 bg-rose-500/20 hover:bg-rose-500 border border-rose-500/30 text-rose-300 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Desactivar Contraseña
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Inactivity Auto-Lock settings */}
+              {hasPassword && (
+                <div className="bg-[#101e33] border border-slate-700/80 rounded-2xl p-5 space-y-3">
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-cyan-400" />
+                    Auto-bloqueo por inactividad
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    Bloquea la pantalla automáticamente si no realizas acciones durante este tiempo:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { val: 5, label: '5 minutos' },
+                      { val: 15, label: '15 minutos' },
+                      { val: 30, label: '30 minutos' },
+                      { val: 60, label: '1 hora' },
+                      { val: 0, label: 'Desactivado' },
+                    ].map(opt => (
+                      <button
+                        key={opt.val}
+                        onClick={() => onUpdateAutoLock(opt.val)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                          autoLockMinutes === opt.val
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold'
+                            : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-4 border-t border-slate-800 bg-[#0a1424] flex items-center justify-between text-xs text-slate-400">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4 text-cyan-400" />
+            <span>Cifrado nativo AES-256-GCM con derivación de clave PBKDF2</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl transition-colors cursor-pointer"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -16,6 +16,9 @@ import {
   Star,
   GitCommit,
   RefreshCw,
+  Shield,
+  Lock,
+  FileKey,
 } from 'lucide-react';
 import { ActiveTab } from '../types/portfolio';
 
@@ -30,6 +33,9 @@ interface SidebarProps {
   onCheckForUpdates?: () => void;
   isCheckingVersion?: boolean;
   hasPendingUpdate?: boolean;
+  hasPassword?: boolean;
+  onLockApp?: () => void;
+  onOpenSecurityModal?: (tab?: 'backup' | 'import' | 'password' | 'inspect') => void;
 }
 
 export function Sidebar({
@@ -42,6 +48,9 @@ export function Sidebar({
   onCheckForUpdates,
   isCheckingVersion = false,
   hasPendingUpdate = false,
+  hasPassword = false,
+  onLockApp,
+  onOpenSecurityModal,
 }: SidebarProps) {
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Inicio', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -190,6 +199,36 @@ export function Sidebar({
                 <RefreshCw className={`w-3 h-3 ${isCheckingVersion ? 'animate-spin text-cyan-400' : 'text-blue-400'}`} />
                 <span>{isCheckingVersion ? 'Comprobando...' : 'Comprobar al día'}</span>
               </button>
+            )}
+
+            {/* Acceso rápido a Seguridad y Copias Cifradas */}
+            {onOpenSecurityModal && (
+              <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    onOpenSecurityModal();
+                    onClose();
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/50 text-[11px] font-bold text-cyan-300 border border-cyan-800/50 transition-colors"
+                  title="Abrir panel de Seguridad y Copias de Seguridad"
+                >
+                  <Shield className="w-3 h-3 text-cyan-400" />
+                  <span>Seguridad & Copias</span>
+                </button>
+
+                {hasPassword && onLockApp && (
+                  <button
+                    onClick={() => {
+                      onLockApp();
+                      onClose();
+                    }}
+                    className="p-1.5 rounded-lg bg-slate-900 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-800/50 transition-colors"
+                    title="Bloquear aplicación ahora"
+                  >
+                    <Lock className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

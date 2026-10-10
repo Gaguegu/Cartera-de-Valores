@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Menu, RefreshCw, TrendingUp, Calendar, Sparkles } from 'lucide-react';
+import { Menu, RefreshCw, TrendingUp, Calendar, Sparkles, Lock, Shield } from 'lucide-react';
 import { ActiveTab } from '../types/portfolio';
 
 interface HeaderProps {
@@ -15,6 +15,9 @@ interface HeaderProps {
   onCheckForUpdates?: () => void;
   onInstallNow?: () => void;
   onForceReload?: () => void;
+  hasPassword?: boolean;
+  onLockApp?: () => void;
+  onOpenSecurityModal?: (tab?: 'backup' | 'import' | 'password' | 'inspect') => void;
 }
 
 export function Header({
@@ -28,6 +31,9 @@ export function Header({
   onCheckForUpdates,
   onInstallNow,
   onForceReload,
+  hasPassword = false,
+  onLockApp,
+  onOpenSecurityModal,
 }: HeaderProps) {
   const todayFormatted = useMemo(() => {
     return new Intl.DateTimeFormat('es-ES', {
@@ -185,6 +191,27 @@ export function Header({
             )}
           </div>
         )}
+
+        {/* BOTÓN DE SEGURIDAD / BLOQUEO RÁPIDO */}
+        {hasPassword && onLockApp ? (
+          <button
+            onClick={onLockApp}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-950/80 hover:bg-blue-900 border border-blue-700/80 hover:border-cyan-400 text-blue-200 hover:text-white transition-all shadow-sm cursor-pointer active:scale-95"
+            title="Bloquear aplicación con contraseña ahora"
+          >
+            <Lock className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Bloquear</span>
+          </button>
+        ) : onOpenSecurityModal ? (
+          <button
+            onClick={() => onOpenSecurityModal('password')}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-900/80 hover:bg-slate-800 border border-slate-750 hover:border-slate-600 text-slate-300 hover:text-white transition-all shadow-sm cursor-pointer active:scale-95"
+            title="Configurar contraseña de acceso o copia de seguridad"
+          >
+            <Shield className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden sm:inline">Seguridad</span>
+          </button>
+        ) : null}
 
         {/* Date badge: Fecha actual dinámica */}
         <div 
