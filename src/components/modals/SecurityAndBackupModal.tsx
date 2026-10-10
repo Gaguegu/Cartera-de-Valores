@@ -23,6 +23,10 @@ import {
   HelpCircle,
   Layers,
   FileCheck2,
+  Copy,
+  Sparkles,
+  Check,
+  Shuffle,
 } from 'lucide-react';
 import {
   StockPosition,
@@ -38,6 +42,7 @@ import {
   decryptAndValidateBackup,
   AppPortfolioBackupData,
   formatBackupDateTime,
+  generateSecurePassword,
 } from '../../utils/cryptoService';
 
 interface SecurityAndBackupModalProps {
@@ -131,8 +136,48 @@ export function SecurityAndBackupModal({
   const [showPassToggles, setShowPassToggles] = useState<{ [k: string]: boolean }>({});
   const [passwordStatusMsg, setPasswordStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isProcessingPass, setIsProcessingPass] = useState(false);
+  const [copyToast, setCopyToast] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleGeneratePassword = (
+    type: 'mixed' | 'numeric' | 'alphanumeric' = 'mixed',
+    target: 'setup' | 'new' | 'backup' = 'setup'
+  ) => {
+    const generated = generateSecurePassword(20, type);
+    if (target === 'setup') {
+      setSetupPassInput(generated);
+      setSetupPassConfirm(generated);
+    } else if (target === 'new') {
+      setNewPassInput(generated);
+      setNewPassConfirm(generated);
+    } else if (target === 'backup') {
+      setBackupPassword(generated);
+      setBackupConfirmPassword(generated);
+    }
+
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(generated).then(() => {
+        setCopyToast(`¡Generada clave de 20 ${type === 'numeric' ? 'dígitos' : 'caracteres'} y copiada al portapapeles!`);
+        setTimeout(() => setCopyToast(null), 4000);
+      }).catch(() => {
+        setCopyToast(`¡Generada clave de 20 ${type === 'numeric' ? 'dígitos' : 'caracteres'}!`);
+        setTimeout(() => setCopyToast(null), 3000);
+      });
+    } else {
+      setCopyToast(`¡Generada clave de 20 ${type === 'numeric' ? 'dígitos' : 'caracteres'}!`);
+      setTimeout(() => setCopyToast(null), 3000);
+    }
+  };
+
+  const handleCopyToClipboard = (text: string, label = 'Contraseña') => {
+    if (!text) return;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopyToast(`¡${label} copiada al portapapeles!`);
+      setTimeout(() => setCopyToast(null), 2500);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -259,8 +304,24 @@ export function SecurityAndBackupModal({
     e.preventDefault();
     setPasswordStatusMsg(null);
 
+    if (!setupPassInput || setupPassInput.length < 4) {
+      setPasswordStatusMsg({
+        type: 'error',
+        text: 'La contraseña debe tener al menos 4 caracteres.',
+      });
+      return;
+    }
+
+    if (setupPassInput.length > 20) {
+      setPasswordStatusMsg({
+        type: 'error',
+        text: 'La contraseña no puede superar un máximo de 20 dígitos o caracteres.',
+      });
+      return;
+    }
+
     if (setupPassInput !== setupPassConfirm) {
-      setPasswordStatusMsg({ type: 'error', text: 'Las contraseñas no coinciden.' });
+      setPasswordStatusMsg({ type: 'error', text: 'Las contraseñas no coinciden. Asegúrate de que coincidan exactamente.' });
       return;
     }
 
@@ -282,6 +343,22 @@ export function SecurityAndBackupModal({
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordStatusMsg(null);
+
+    if (!newPassInput || newPassInput.length < 4) {
+      setPasswordStatusMsg({
+        type: 'error',
+        text: 'La nueva contraseña debe tener al menos 4 caracteres.',
+      });
+      return;
+    }
+
+    if (newPassInput.length > 20) {
+      setPasswordStatusMsg({
+        type: 'error',
+        text: 'La nueva contraseña no puede superar un máximo de 20 dígitos o caracteres.',
+      });
+      return;
+    }
 
     if (newPassInput !== newPassConfirm) {
       setPasswordStatusMsg({ type: 'error', text: 'La nueva contraseña y su confirmación no coinciden.' });
@@ -432,18 +509,39 @@ export function SecurityAndBackupModal({
               {/* Export Form */}
               <form onSubmit={handleExportEncryptedBackup} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
-                    Contraseña para cifrar el archivo de copia
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
+                      Contraseña para cifrar el archivo de copia
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleGeneratePassword('mixed', 'backup')}
+                        className="text-[11px] px-2.5 py-1 rounded-lg bg-blue-900/60 hover:bg-blue-800 text-cyan-300 border border-blue-700/60 font-semibold cursor-pointer transition-colors flex items-center gap-1"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        <span>Generar 20 car.</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleGeneratePassword('numeric', 'backup')}
+                        className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-semibold cursor-pointer transition-colors flex items-center gap-1"
+                      >
+                        <span>20 dígitos</span>
+                      </button>
+                    </div>
+                  </div>
                   <div className="relative">
                     <input
                       type={showBackupPass ? 'text' : 'password'}
                       value={backupPassword}
                       onChange={e => setBackupPassword(e.target.value)}
-                      placeholder="Introduce la contraseña que protegerá este archivo..."
+                      placeholder="Introduce la contraseña (máximo 20 caracteres)..."
                       required
-                      className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 pr-11 transition-all"
+                      minLength={4}
+                      maxLength={20}
+                      className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 pr-11 transition-all font-mono"
                     />
                     <button
                       type="button"
@@ -456,7 +554,7 @@ export function SecurityAndBackupModal({
                   {sessionPassword && (
                     <p className="text-[11px] text-cyan-400/90 mt-1 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
-                      Rellenada automáticamente con la contraseña de tu sesión actual. Puedes cambiarla si prefieres otra.
+                      Rellenada automáticamente con la contraseña de tu sesión actual. Puedes cambiarla o generar otra si lo deseas.
                     </p>
                   )}
                 </div>
@@ -835,6 +933,23 @@ export function SecurityAndBackupModal({
                 )}
               </div>
 
+              {/* Copy Toast Notification */}
+              {copyToast && (
+                <div className="p-3 rounded-xl bg-cyan-950/90 border border-cyan-500/60 text-cyan-200 text-xs flex items-center justify-between gap-2 shadow-lg animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span className="font-semibold">{copyToast}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCopyToast(null)}
+                    className="text-cyan-400 hover:text-white text-xs font-bold px-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* Status Messages */}
               {passwordStatusMsg && (
                 <div
@@ -856,29 +971,90 @@ export function SecurityAndBackupModal({
               {/* Form A: Initial Password Setup (if hasPassword === false) */}
               {!hasPassword ? (
                 <form onSubmit={handleSetupPasswordSubmit} className="bg-[#101e33] border border-slate-700/80 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <KeyRound className="w-4 h-4 text-cyan-400" />
-                    Crear contraseña maestra de la aplicación
-                  </h4>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <KeyRound className="w-4 h-4 text-cyan-400" />
+                      Crear contraseña de acceso de la aplicación
+                    </h4>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
+                      Máximo 20 dígitos / caracteres
+                    </span>
+                  </div>
+
+                  {/* Fast Generator Box */}
+                  <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-700/80 space-y-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                        Generador rápido (hasta 20 dígitos / caracteres)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Puedes escribir tu propia clave (de 4 a 20 dígitos) o pulsar un botón para generarla al instante:
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleGeneratePassword('mixed', 'setup')}
+                        className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer transition-all active:scale-95"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
+                        <span>⚡ Generar clave segura (20 car.)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleGeneratePassword('numeric', 'setup')}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white font-bold text-xs flex items-center gap-1.5 border border-slate-700 cursor-pointer transition-all active:scale-95"
+                      >
+                        <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                        <span>🔢 Generar 20 dígitos numéricos</span>
+                      </button>
+                      {setupPassInput && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyToClipboard(setupPassInput, 'Contraseña')}
+                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1 border border-slate-700 cursor-pointer transition-all"
+                          title="Copiar contraseña generada al portapapeles"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copiar clave</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Contraseña nueva (mínimo 4 caracteres)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Contraseña nueva (máximo 20 dígitos o caracteres)
+                      </label>
+                      <span
+                        className={`text-[11px] font-mono font-bold ${
+                          setupPassInput.length >= 4 && setupPassInput.length <= 20
+                            ? 'text-emerald-400'
+                            : setupPassInput.length > 20
+                            ? 'text-rose-400'
+                            : 'text-amber-400'
+                        }`}
+                      >
+                        {setupPassInput.length}/20 car. {setupPassInput.length >= 4 && setupPassInput.length <= 20 ? '✓ (Válida)' : setupPassInput.length > 20 ? '⚠️ Excede 20' : '(mín. 4)'}
+                      </span>
+                    </div>
                     <div className="relative">
                       <input
                         type={showPassToggles['setup'] ? 'text' : 'password'}
                         value={setupPassInput}
-                        onChange={e => setSetupPassInput(e.target.value)}
-                        placeholder="Introduce tu contraseña..."
+                        onChange={e => setSetupPassInput(e.target.value.slice(0, 20))}
+                        placeholder="Introduce tu clave (máximo 20 dígitos)..."
                         required
                         minLength={4}
-                        className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white pr-11"
+                        maxLength={20}
+                        className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm text-white pr-11 font-mono"
                       />
                       <button
                         type="button"
                         onClick={() => togglePass('setup')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-1"
                       >
                         {showPassToggles['setup'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -886,17 +1062,25 @@ export function SecurityAndBackupModal({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Confirmar contraseña
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-slate-300">
+                        Confirmar contraseña
+                      </label>
+                      {setupPassConfirm && setupPassInput === setupPassConfirm && setupPassConfirm.length >= 4 && (
+                        <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" /> Coinciden
+                        </span>
+                      )}
+                    </div>
                     <input
                       type={showPassToggles['setup'] ? 'text' : 'password'}
                       value={setupPassConfirm}
-                      onChange={e => setSetupPassConfirm(e.target.value)}
-                      placeholder="Repite la contraseña..."
+                      onChange={e => setSetupPassConfirm(e.target.value.slice(0, 20))}
+                      placeholder="Repite la contraseña idéntica..."
                       required
                       minLength={4}
-                      className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                      maxLength={20}
+                      className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm text-white font-mono"
                     />
                   </div>
 
@@ -909,26 +1093,80 @@ export function SecurityAndBackupModal({
                       type="text"
                       value={setupHintInput}
                       onChange={e => setSetupHintInput(e.target.value)}
-                      placeholder="Ej. Mi fecha favorita o mascota..."
+                      placeholder="Ej. Guardada en gestor de claves o clave personal..."
                       className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2 text-sm text-white"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    disabled={isProcessingPass}
-                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl text-sm shadow-md cursor-pointer transition-all"
+                    disabled={
+                      isProcessingPass ||
+                      setupPassInput.length < 4 ||
+                      setupPassInput.length > 20 ||
+                      setupPassInput !== setupPassConfirm
+                    }
+                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl text-sm shadow-md cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isProcessingPass ? 'Configurando...' : 'Activar Protección con Contraseña'}
+                    {isProcessingPass
+                      ? 'Configurando...'
+                      : setupPassInput.length < 4
+                      ? `Introduce al menos 4 caracteres (llevas ${setupPassInput.length})`
+                      : setupPassInput.length > 20
+                      ? 'Máximo 20 caracteres permitido'
+                      : 'Activar Protección con Contraseña'}
                   </button>
                 </form>
               ) : (
                 /* Form B: Change Password (if hasPassword === true) */
                 <form onSubmit={handleChangePasswordSubmit} className="bg-[#101e33] border border-slate-700/80 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <KeyRound className="w-4 h-4 text-cyan-400" />
-                    Cambiar contraseña de acceso
-                  </h4>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <KeyRound className="w-4 h-4 text-cyan-400" />
+                      Cambiar contraseña de acceso
+                    </h4>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
+                      Máximo 20 caracteres
+                    </span>
+                  </div>
+
+                  {/* Fast Generator Box for Change */}
+                  <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-700/80 space-y-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                        Generador rápido (máximo 20 caracteres)
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleGeneratePassword('mixed', 'new')}
+                        className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer transition-all active:scale-95"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-cyan-200" />
+                        <span>⚡ Generar clave de 20 caracteres</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleGeneratePassword('numeric', 'new')}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white font-bold text-xs flex items-center gap-1.5 border border-slate-700 cursor-pointer transition-all active:scale-95"
+                      >
+                        <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                        <span>🔢 Generar 20 dígitos numéricos</span>
+                      </button>
+                      {newPassInput && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyToClipboard(newPassInput, 'Nueva contraseña')}
+                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center gap-1 border border-slate-700 cursor-pointer transition-all"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copiar</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -941,12 +1179,13 @@ export function SecurityAndBackupModal({
                         onChange={e => setCurrentPassInput(e.target.value)}
                         placeholder="Contraseña actual..."
                         required
-                        className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white pr-11"
+                        maxLength={20}
+                        className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white pr-11 font-mono"
                       />
                       <button
                         type="button"
                         onClick={() => togglePass('current')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 p-1"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-1"
                       >
                         {showPassToggles['current'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -955,31 +1194,53 @@ export function SecurityAndBackupModal({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Nueva contraseña
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-slate-300">
+                          Nueva contraseña
+                        </label>
+                        <span
+                          className={`text-[10px] font-mono font-bold ${
+                            newPassInput.length >= 4 && newPassInput.length <= 20
+                              ? 'text-emerald-400'
+                              : newPassInput.length > 20
+                              ? 'text-rose-400'
+                              : 'text-amber-400'
+                          }`}
+                        >
+                          {newPassInput.length}/20 car.
+                        </span>
+                      </div>
                       <input
                         type={showPassToggles['current'] ? 'text' : 'password'}
                         value={newPassInput}
-                        onChange={e => setNewPassInput(e.target.value)}
-                        placeholder="Nueva contraseña..."
+                        onChange={e => setNewPassInput(e.target.value.slice(0, 20))}
+                        placeholder="Máximo 20 caracteres..."
                         required
                         minLength={4}
-                        className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                        maxLength={20}
+                        className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm text-white font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Confirmar nueva contraseña
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-slate-300">
+                          Confirmar nueva contraseña
+                        </label>
+                        {newPassConfirm && newPassInput === newPassConfirm && newPassConfirm.length >= 4 && (
+                          <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Coinciden
+                          </span>
+                        )}
+                      </div>
                       <input
                         type={showPassToggles['current'] ? 'text' : 'password'}
                         value={newPassConfirm}
-                        onChange={e => setNewPassConfirm(e.target.value)}
+                        onChange={e => setNewPassConfirm(e.target.value.slice(0, 20))}
                         placeholder="Repetir nueva..."
                         required
                         minLength={4}
-                        className="w-full bg-[#0a1424] border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white"
+                        maxLength={20}
+                        className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-2.5 text-sm text-white font-mono"
                       />
                     </div>
                   </div>
@@ -1001,10 +1262,21 @@ export function SecurityAndBackupModal({
                   <div className="flex flex-col sm:flex-row gap-3 pt-2">
                     <button
                       type="submit"
-                      disabled={isProcessingPass}
-                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition-all cursor-pointer"
+                      disabled={
+                        isProcessingPass ||
+                        newPassInput.length < 4 ||
+                        newPassInput.length > 20 ||
+                        newPassInput !== newPassConfirm
+                      }
+                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isProcessingPass ? 'Guardando...' : 'Actualizar Contraseña'}
+                      {isProcessingPass
+                        ? 'Guardando...'
+                        : newPassInput.length < 4
+                        ? `Mínimo 4 caracteres (llevas ${newPassInput.length})`
+                        : newPassInput.length > 20
+                        ? 'Máximo 20 caracteres permitido'
+                        : 'Actualizar Contraseña'}
                     </button>
 
                     <button

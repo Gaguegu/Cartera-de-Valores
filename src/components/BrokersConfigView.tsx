@@ -170,8 +170,8 @@ export function BrokersConfigView({
                   </div>
                   <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
                     {hasPassword
-                      ? 'La aplicación solicita la contraseña obligatoria antes de entrar a la cartera. También se utiliza como clave para cifrar y descifrar copias de seguridad.'
-                      : 'Cualquier persona puede ver la cartera en este dispositivo. Te recomendamos configurar una contraseña de protección para blindar tus datos sensibles de inversiones.'}
+                      ? 'La aplicación solicita la contraseña obligatoria (máximo 20 dígitos) antes de entrar a la cartera. También dispones del botón superior «Bloqueo manual con un solo clic» para cerrarla inmediatamente cuando desees.'
+                      : 'Cualquier persona puede ver la cartera en este dispositivo. Te recomendamos configurar una contraseña de protección (máximo 20 caracteres/dígitos) para blindar tus datos sensibles y habilitar el Bloqueo manual con un solo clic.'}
                   </p>
                 </div>
               </div>
@@ -180,11 +180,11 @@ export function BrokersConfigView({
                 {hasPassword && onLockApp && (
                   <button
                     onClick={onLockApp}
-                    className="flex-1 md:flex-none px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 border border-slate-700 cursor-pointer"
-                    title="Bloquea la aplicación de inmediato"
+                    className="flex-1 md:flex-none px-4 py-2.5 bg-rose-950/80 hover:bg-rose-900 border border-rose-500/80 hover:border-rose-400 text-rose-200 hover:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-rose-950/40 cursor-pointer active:scale-95"
+                    title="Bloqueo manual con un solo clic: bloquea la aplicación de inmediato"
                   >
-                    <Lock className="w-4 h-4 text-cyan-400" />
-                    <span>Bloquear ahora</span>
+                    <Lock className="w-4 h-4 text-rose-300" />
+                    <span>Bloqueo manual con 1 clic</span>
                   </button>
                 )}
 
@@ -193,7 +193,7 @@ export function BrokersConfigView({
                   className="flex-1 md:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-950/40 cursor-pointer"
                 >
                   <KeyRound className="w-4 h-4" />
-                  <span>{hasPassword ? 'Gestionar / Cambiar contraseña' : 'Crear contraseña de acceso'}</span>
+                  <span>{hasPassword ? 'Gestionar / Cambiar contraseña (máx. 20 dígitos)' : 'Crear contraseña (máximo 20 dígitos)'}</span>
                 </button>
               </div>
             </div>

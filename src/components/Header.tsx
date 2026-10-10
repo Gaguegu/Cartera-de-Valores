@@ -73,7 +73,7 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-[#0f1e36] border-b border-slate-800/80 px-4 sm:px-6 py-3 flex items-center justify-between shadow-md">
+    <header className="sticky top-0 z-30 bg-[#0f1e36] border-b border-slate-800/80 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shadow-md relative min-h-[64px]">
       {/* Left: Mobile trigger & Logo + Current View */}
       <div className="flex items-center gap-3">
         <button
@@ -103,8 +103,68 @@ export function Header({
         </div>
       </div>
 
+      {/* CENTRO: Botón de Bloqueo manual con un solo clic */}
+      <div className="hidden md:flex items-center justify-center absolute left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+        <button
+          onClick={hasPassword && onLockApp ? onLockApp : () => onOpenSecurityModal && onOpenSecurityModal('password')}
+          className={`group relative flex items-center gap-2.5 px-4 lg:px-5 py-2 lg:py-2.5 rounded-2xl border-2 transition-all duration-200 cursor-pointer select-none active:scale-95 shadow-lg ${
+            hasPassword
+              ? 'bg-gradient-to-r from-[#24101c] via-[#361327] to-[#1e0a18] border-rose-500/90 hover:border-rose-400 text-white shadow-[0_0_20px_rgba(244,63,94,0.35)] hover:shadow-[0_0_28px_rgba(244,63,94,0.55)] ring-1 ring-rose-500/30'
+              : 'bg-gradient-to-r from-[#172338] via-[#102038] to-[#0d1b30] border-amber-500/80 hover:border-amber-400 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.25)] hover:shadow-[0_0_22px_rgba(245,158,11,0.45)]'
+          }`}
+          title={
+            hasPassword
+              ? 'Bloqueo manual con un solo clic: haz clic para bloquear la cartera de inmediato'
+              : 'Configurar contraseña para activar el bloqueo manual con un solo clic'
+          }
+        >
+          <div
+            className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 shadow-inner ${
+              hasPassword
+                ? 'bg-rose-500/25 text-rose-300 border border-rose-500/50'
+                : 'bg-amber-500/25 text-amber-300 border border-amber-500/50'
+            }`}
+          >
+            <Lock className={`w-4 h-4 ${hasPassword ? 'text-rose-300 animate-pulse' : 'text-amber-300'}`} />
+          </div>
+
+          <div className="flex flex-col text-left leading-tight">
+            <div className="flex items-center gap-2">
+              <span className="text-xs lg:text-[13px] font-black tracking-tight text-white group-hover:text-rose-100 transition-colors">
+                Bloqueo manual con un solo clic
+              </span>
+              <span
+                className={`text-[9px] uppercase px-1.5 py-0.5 rounded-full font-black tracking-wider ${
+                  hasPassword
+                    ? 'bg-rose-950/90 text-rose-300 border border-rose-700/80'
+                    : 'bg-amber-950/90 text-amber-300 border border-amber-700/80'
+                }`}
+              >
+                1 Clic
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-300 font-medium">
+              {hasPassword ? 'Bloquea la aplicación al instante' : 'Activar contraseña de acceso'}
+            </span>
+          </div>
+        </button>
+      </div>
+
       {/* Right: Óvalo de versiones modificadas, Fecha, Acciones */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Mobile 1-click lock button */}
+        <button
+          onClick={hasPassword && onLockApp ? onLockApp : () => onOpenSecurityModal && onOpenSecurityModal('password')}
+          className={`md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer select-none active:scale-95 shadow-sm ${
+            hasPassword
+              ? 'bg-rose-950/90 hover:bg-rose-900 border-rose-500/80 text-rose-200'
+              : 'bg-slate-900 border-amber-500/60 text-amber-300'
+          }`}
+          title="Bloqueo manual con un solo clic"
+        >
+          <Lock className="w-3.5 h-3.5 text-rose-300" />
+          <span>Bloqueo 1 clic</span>
+        </button>
         {/* ÓVALO DE VERSIÓN (Estilo de la captura con colores de la aplicación) */}
         {onOpenVersionsModal && (
           <button

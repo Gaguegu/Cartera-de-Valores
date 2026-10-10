@@ -123,6 +123,9 @@ export function useAppSecurity() {
       if (!password || password.length < 4) {
         return { success: false, error: 'La contraseña debe tener al menos 4 caracteres.' };
       }
+      if (password.length > 20) {
+        return { success: false, error: 'La contraseña no puede superar los 20 dígitos o caracteres (máximo 20 dígitos).' };
+      }
 
       try {
         const { hash, salt } = await hashMasterPassword(password);
@@ -170,6 +173,9 @@ export function useAppSecurity() {
 
       if (!newPassword || newPassword.length < 4) {
         return { success: false, error: 'La nueva contraseña debe tener al menos 4 caracteres.' };
+      }
+      if (newPassword.length > 20) {
+        return { success: false, error: 'La nueva contraseña no puede superar los 20 dígitos o caracteres (máximo 20 dígitos).' };
       }
 
       try {

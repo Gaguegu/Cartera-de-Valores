@@ -82,12 +82,13 @@ export function LockScreen({ onUnlock, hint, onOpenRestoreFromLock }: LockScreen
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => {
-                  setPassword(e.target.value);
+                  setPassword(e.target.value.slice(0, 20));
                   if (error) setError(null);
                 }}
                 autoFocus
-                placeholder="Introduce tu contraseña..."
-                className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 pr-11 transition-all"
+                placeholder="Introduce tu contraseña (máximo 20 dígitos)..."
+                maxLength={20}
+                className="w-full bg-[#0a1424] border border-slate-700 focus:border-cyan-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 pr-11 transition-all font-mono"
               />
               <button
                 type="button"
@@ -98,6 +99,14 @@ export function LockScreen({ onUnlock, hint, onOpenRestoreFromLock }: LockScreen
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {password.length > 0 && (
+              <div className="flex justify-between items-center text-[11px] text-slate-400 mt-1 px-1">
+                <span>Dígitos introducidos:</span>
+                <span className="font-mono font-bold text-cyan-300">
+                  {password.length}/20 (máx. 20)
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Error Message */}

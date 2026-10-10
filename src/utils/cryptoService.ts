@@ -382,3 +382,48 @@ export async function decryptAndValidateBackup(
     };
   }
 }
+
+/**
+ * Generates a cryptographically secure random password or PIN
+ * Supports maximum 20 characters as requested by user
+ */
+export function generateSecurePassword(
+  length = 20,
+  type: 'mixed' | 'numeric' | 'alphanumeric' = 'mixed'
+): string {
+  const safeLength = Math.min(20, Math.max(4, length));
+  
+  if (type === 'numeric') {
+    // 20 purely numeric digits
+    const digits = '0123456789';
+    const randomBytes = new Uint32Array(safeLength);
+    window.crypto.getRandomValues(randomBytes);
+    return Array.from(randomBytes)
+      .map(n => digits[n % digits.length])
+      .join('');
+  }
+
+  if (type === 'alphanumeric') {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const randomBytes = new Uint32Array(safeLength);
+    window.crypto.getRandomValues(randomBytes);
+    return Array.from(randomBytes)
+      .map(n => chars[n % chars.length])
+      .join('');
+  }
+
+  // Mixed: letters, numbers, symbols
+  const lowers = 'abcdefghijkmnopqrstuvwxyz';
+  const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const nums = '23456789';
+  const symbols = '!@#$%&*-_+=?';
+  const allChars = lowers + uppers + nums + symbols;
+
+  const randomBytes = new Uint32Array(safeLength);
+  window.crypto.getRandomValues(randomBytes);
+  
+  return Array.from(randomBytes)
+    .map(n => allChars[n % allChars.length])
+    .join('');
+}
+
