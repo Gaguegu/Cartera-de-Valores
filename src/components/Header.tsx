@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Menu, RefreshCw, TrendingUp, Calendar, Sparkles, Lock, Shield, KeyRound } from 'lucide-react';
+import { Menu, RefreshCw, TrendingUp, Calendar, Sparkles, Lock, Shield } from 'lucide-react';
 import { ActiveTab } from '../types/portfolio';
 
 interface HeaderProps {
@@ -202,18 +202,6 @@ export function Header({
               </button>
             )}
           </div>
-        )}
-
-        {/* BOTÓN: Contraseña (acceso directo para cambiar o configurar contraseña) */}
-        {onOpenSecurityModal && (
-          <button
-            onClick={() => onOpenSecurityModal('password')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 hover:border-amber-500/60 text-amber-300 hover:text-white transition-all shadow-sm cursor-pointer active:scale-95"
-            title="Cambiar o configurar contraseña de acceso"
-          >
-            <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">Contraseña</span>
-          </button>
         )}
 
         {/* Date badge: Fecha actual dinámica */}

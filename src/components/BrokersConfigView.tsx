@@ -193,30 +193,22 @@ export function BrokersConfigView({
               </div>
             </div>
 
-            {/* Guía muy visible: ¿Dónde cambiar de nuevo la contraseña? */}
+            {/* Guía muy visible: ¿Dónde cambiar tu contraseña? */}
             <div className="p-4 rounded-xl bg-gradient-to-r from-blue-950/70 via-indigo-950/40 to-slate-900 border border-blue-500/40 text-xs space-y-2">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 text-white font-bold">
                   <KeyRound className="w-4 h-4 text-amber-400" />
-                  <span>¿Dónde cambiar de nuevo tu contraseña?</span>
+                  <span>Gestión de tu contraseña de acceso</span>
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-900/80 text-cyan-300 border border-blue-700">
                   Máximo 20 dígitos
                 </span>
               </div>
               <p className="text-slate-300 leading-relaxed text-[11px]">
-                Para cambiar tu contraseña en cualquier momento tienes <strong>2 formas sencillas</strong>:
+                Para cambiar tu contraseña o crear una nueva en cualquier momento, pulsa el botón azul <strong>«🔑 Cambiar Contraseña»</strong> situado justo arriba.
               </p>
-              <ul className="text-slate-300 text-[11px] space-y-1 list-disc list-inside">
-                <li>
-                  <strong>Desde esta pantalla:</strong> Pulsa el botón azul <strong>«🔑 Cambiar Contraseña»</strong> justo arriba.
-                </li>
-                <li>
-                  <strong>Desde cualquier pantalla:</strong> Pulsa el botón <strong>«Contraseña»</strong> que se encuentra en la esquina superior derecha del encabezado.
-                </li>
-              </ul>
               <p className="text-cyan-300 text-[11px] font-medium pt-0.5">
-                Al pulsar, introduce tu contraseña actual y la nueva contraseña de hasta 20 dígitos o caracteres. También dispones de generador automático de 20 dígitos.
+                Al pulsar, introduce tu contraseña actual y la nueva contraseña de hasta 20 dígitos o caracteres. También dispones de generadores automáticos de 20 dígitos y copiado al portapapeles.
               </p>
             </div>
 
